@@ -61,7 +61,10 @@
           (define/public (render-value value settings port port-write) (write value port))
           (define/public (render-value/format value settings port port-write) (write value port))
           (define/public (unmarshall-settings x) x)
-	  (define/public (create-executable . args) (error "can't do that, yet"))
+	  (define/public (create-executable fn parent . args)
+	    (message-box "Unsupported"
+			 "Sorry - executables are not supported for Algol 60"
+			 parent))
 	  (define/public (get-one-line-summary) "Algol 60 (not Scheme at all!)")
           
           (super-instantiate ())))

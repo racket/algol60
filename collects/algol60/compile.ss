@@ -10,32 +10,51 @@
      (provide compile-simplified)
      
      (define (compile-simplified stmt)
-       (datum->syntax-object 
-        #'here
-        (compile-a60 stmt 'void (empty-context))))
+       (let ([no-num (gensym 'no-num)])
+         (datum->syntax-object 
+          #'here
+          `(let ([,no-num
+                  (lambda (n)
+                    (error "no number label matching " n))])
+             ,(compile-a60 stmt 'void no-num (empty-context))))))
 
-     (define (compile-a60 stmt next-label context)
+     (define (compile-a60 stmt next-label num-label context)
        (match stmt
          [($ a60:block decls statements)
-          (compile-block decls statements next-label context)]
+          (compile-block decls statements next-label num-label context)]
          [else
-          (compile-statement stmt next-label context)]))
+          (compile-statement stmt next-label num-label context)]))
      
-     (define (compile-block decls statements next-label context)
-       (let ([context (foldl (lambda (decl context)
-                               (match decl
-                                 [($ a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
-                                  (add-procedure context var result-type arg-vars by-value-vars arg-specs)]
-                                 [($ a60:type-decl type ids)
-                                  (add-atoms context ids type)]
-                                 [($ a60:array-decl type arrays)
-                                  (add-arrays context (map car arrays) (map cdr arrays) type)]
-                                 [($ a60:switch-decl name exprs)
-                                  (add-switch context name)]))
-                             (add-labels
-                              context
-                              (map car statements))
-                             decls)])
+     (define (compile-block decls statements next-label next-num-label context)
+       (let* ([labels-with-numbers (map car statements)]
+              [num-label-map (filter values
+                                     (map 
+                                      (lambda (l)
+                                        (and (stx-number? l)
+                                             (cons l (datum->syntax-object #F (gensym 'numlabel)))))
+                                      labels-with-numbers))]
+              [num-label (if (null? num-label-map)
+                             next-num-label
+                             (gensym 'num))]
+              [labels (map (lambda (l)
+                             (if (stx-number? l)
+                                 (cdr (assv l num-label-map))
+                                 l))
+                           labels-with-numbers)]
+              [context (foldl (lambda (decl context)
+                                (match decl
+                                  [($ a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
+                                   (add-procedure context var result-type arg-vars by-value-vars arg-specs)]
+                                  [($ a60:type-decl type ids)
+                                   (add-atoms context ids type)]
+                                  [($ a60:array-decl type arrays)
+                                   (add-arrays context (map car arrays) (map cdr arrays) type)]
+                                  [($ a60:switch-decl name exprs)
+                                   (add-switch context name)]))
+                              (add-labels
+                               context
+                               labels)
+                              decls)])
          `(letrec (,@(apply
                       append
                       (map (lambda (decl)
@@ -50,7 +69,7 @@
                                               [done (gensym 'done)])
                                           `(let* ([,result-var undefined]
                                                   [,done (lambda () (kont ,result-var))])
-                                             ,(compile-a60 body done
+                                             ,(compile-a60 body done num-label
                                                            (add-settable-procedure
                                                             (add-bindings
                                                              context
@@ -79,26 +98,43 @@
                                                              exprs))])]
                                [else (error "can't compile decl")]))
                            decls))
-                   ,@(cdr 
+                   ,@(if (eq? num-label next-num-label)
+                         null
+                         `([,num-label (lambda (n)
+                                         (case n
+                                           ,@(map (lambda (m)
+                                                    `[(,(car m)) (,(cdr m))])
+                                                  num-label-map)
+                                           [else (,next-num-label n)]))]))
+                   ,@(cdr
                       (foldr (lambda (stmt next-label+compiled)
-                               (cons (car stmt)
-                                     (cons
-                                      `[,(car stmt)
-                                        (lambda ()
-                                          ,(compile-statement (cdr stmt) (car next-label+compiled) context))]
-                                      (cdr next-label+compiled))))
+                               (let ([label (let ([l (car stmt)])
+                                              (if (stx-number? l)
+                                                  (cdr (assq l num-label-map))
+                                                  l))])
+                                 (cons label
+                                       (cons
+                                        `[,label
+                                          (lambda ()
+                                            ,(compile-statement (cdr stmt) 
+                                                                (car next-label+compiled) num-label
+                                                                context))]
+                                        (cdr next-label+compiled)))))
                              (cons next-label null)
                              statements)))
             (,(caar statements)))))
 
-     (define (compile-statement statement next-label context)
+     (define (compile-statement statement next-label num-label context)
        (match statement
          [($ a60:block decls statements)
-          (compile-block decls statements next-label context)]
+          (compile-block decls statements next-label num-label context)]
          [($ a60:if test ($ a60:goto then) ($ a60:goto else))
-          `(if (check-boolean ,(compile-expression test context)) (goto ,then) (goto ,else))]
+          `(if (check-boolean ,(compile-expression test context)) 
+               (goto ,then ,num-label) 
+               (goto ,else ,num-label))]
          [($ a60:goto label)
-          `(goto ,(compile-expression label context))]
+          (at (expression-location label)
+              `(goto ,(compile-expression label context) ,num-label))]
          [($ a60:dummy)
           `(,next-label)]
          [($ a60:call proc args)
@@ -168,6 +204,7 @@
                    (sub var))]
               [else (raise-syntax-error
                      #f
+                     "confused by expression"
                      (expression-location var))]))]
                    
          [($ a60:app func args)
@@ -197,7 +234,7 @@
                (not (procedure-variable? (a60:variable-name arg) context)))
           `(case-lambda
              [() ,(compile-expression arg context)]
-             [(val)  ,(compile-statement (make-a60:assign (list arg) 'val) 'void context)])]
+             [(val)  ,(compile-statement (make-a60:assign (list arg) 'val) 'void 'void context)])]
          [(identifier? arg)
           (compile-argument (make-a60:variable arg null) context)]
          [else `(lambda () ,(compile-expression arg context))]))
@@ -293,4 +330,6 @@
          (and (pair? v)
               (eq? (car v) 'array)
               (cadr v))))
+     
+     (define (stx-number? a) (and (syntax? a) (number? (syntax-e a))))
      )

@@ -18,7 +18,7 @@
   
   (define undefined (letrec ([x x]) x))
   (define (check-boolean b) b)
-  (define (goto f) (f))
+  (define (goto f n) (if (number? f) (n f) (f)))
   (define (get-value v) (v))
   (define (set-target! t v) (t v))
   
@@ -56,4 +56,9 @@
   (define (make-switch . choices)
     (make-a60:switch (list->vector choices)))
   (define (switch-ref sw index)
-    (vector-ref (a60:switch-choices sw) index)))
+    (unless (and (number? index)
+                 (integer? index)
+                 (exact? index)
+                 (<= 1 index (vector-length (a60:switch-choices sw))))
+      (error "bad switch index: " index))
+    ((vector-ref (a60:switch-choices sw) (sub1 index)))))
