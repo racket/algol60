@@ -46,7 +46,8 @@
                               (lambda (value)
                                 (match value
                                   [($ a60:for-number value)
-                                   (values (make-a60:assign (list variable) (make-a60:binary (->stx '+) 
+                                   (values (make-a60:assign (list variable) (make-a60:binary 'num 'num
+											     (->stx '+) 
 											     (->stx '0)
 											     value)) ; +0 => number
                                            (->stx #t)
@@ -54,12 +55,14 @@
                                            #f)]
                                   [($ a60:for-step start step end)
                                    (values (make-a60:assign (list variable) start)
-                                           (make-a60:binary (->stx '<=)
-                                                            (make-a60:binary (->stx '*)
-                                                                             (make-a60:binary (->stx '-) variable end)
+                                           (make-a60:binary 'bool 'num
+							    (->stx '<=)
+                                                            (make-a60:binary 'num 'num
+									     (->stx '*)
+                                                                             (make-a60:binary 'num 'num (->stx '-) variable end)
                                                                              (make-a60:app (->stx 'sign) (list step)))
                                                             (->stx '0))
-                                           (make-a60:assign (list variable) (make-a60:binary (->stx '+) variable step))
+                                           (make-a60:assign (list variable) (make-a60:binary 'num 'num (->stx '+) variable step))
                                            #t)]
                                   [($ a60:for-while value test)
                                    (values (make-a60:assign (list variable) value)
@@ -105,7 +108,8 @@
                                                         (make-a60:goto body-label)
                                                         (make-a60:compound                                                   
                                                          (list
-                                                          (make-a60:assign (list stage-var) (make-a60:binary (->stx '+)
+                                                          (make-a60:assign (list stage-var) (make-a60:binary 'num 'num
+													     (->stx '+)
 													     (->stx '1)
 													     stage-var))
                                                           (make-a60:goto (make-a60:subscript switch-name stage-var)))))

@@ -18,7 +18,7 @@
   
   (define undefined (letrec ([x x]) x))
   (define (check-boolean b) b)
-  (define (goto f n) (if (number? f) (n f) (f)))
+  (define (goto f) (f))
   (define (get-value v) (v))
   (define (set-target! t v) (t v))
   

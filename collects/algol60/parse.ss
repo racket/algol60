@@ -124,14 +124,13 @@
         (tokens non-terminals)
         (start <program>)
         (end EOF)
-        (error (lambda (tok) 
-                 (let ([stx (vector-ref (struct->vector tok) 2)])
-                   (raise-read-error (format "parse error near ~a" (syntax-e stx))
-                                     (syntax-source stx)
-                                     (syntax-line stx)
-                                     (syntax-column stx)
-                                     (syntax-position stx)
-                                     (syntax-span stx)))))
+        (error (lambda (a b stx) 
+		 (raise-read-error (format "parse error near ~a" (syntax-e stx))
+				   (syntax-source stx)
+				   (syntax-line stx)
+				   (syntax-column stx)
+				   (syntax-position stx)
+				   (syntax-span stx))))
         (suppress)
         (grammar 
          ;; ==================== Expressions ====================
@@ -145,13 +144,13 @@
                                        ELSE <arithmetic-expression>)
                                    (make-a60:if $2 $4 $6)])
          (<simple-arithmetic-expression> [(<term>) $1]
-                                         [(<adding-operator> <term>) (make-a60:unary $1 $2)]
+                                         [(<adding-operator> <term>) (make-a60:unary 'num 'num $1 $2)]
                                          [(<simple-arithmetic-expression> <adding-operator> <term>) 
-                                          (make-a60:binary $2 $1 $3)])
+                                          (make-a60:binary 'num 'num $2 $1 $3)])
          (<term> [(<factor>) $1]
-                 [(<term> <multiplying-operator> <factor>) (make-a60:binary $2 $1 $3)])
+                 [(<term> <multiplying-operator> <factor>) (make-a60:binary 'num 'num $2 $1 $3)])
          (<factor> [(<primary>) $1]
-                   [(<factor> POWER <primary>) (make-a60:binary $2 $1 $3)])
+                   [(<factor> POWER <primary>) (make-a60:binary 'num 'num $2 $1 $3)])
          (<adding-operator> [(PLUS) $1]
                             [(MINUS) $1])
          (<multiplying-operator> [(TIMES) $1]
@@ -170,23 +169,23 @@
                                 [(GREATER) $1]
                                 [(NOT-EQUAL) $1])
          (<relation> [(<simple-arithmetic-expression> <relational-operator> <simple-arithmetic-expression>)
-                      (make-a60:binary $2 $1 $3)])
+                      (make-a60:binary 'bool 'num $2 $1 $3)])
          (<Boolean-primary> [(<logical-value>) $1]
                             [(<variable>) $1]
                             [(<function-designator>) $1]
                             [(<relation>) $1]
                             [(OPEN <Boolean-expression> CLOSE) $2])
          (<Boolean-secondary> [(<Boolean-primary>) $1]
-                              [(NEGATE <Boolean-primary>) (make-a60:unary $1 $2)])
+                              [(NEGATE <Boolean-primary>) (make-a60:unary 'bool 'bool $1 $2)])
          (<Boolean-factor> [(<Boolean-secondary>) $1]
-                           [(<Boolean-factor> AND <Boolean-secondary>) (make-a60:binary $2 $1 $3)])
+                           [(<Boolean-factor> AND <Boolean-secondary>) (make-a60:binary 'bool 'bool $2 $1 $3)])
          (<Boolean-term> [(<Boolean-factor>) $1]
-                         [(<Boolean-term> OR <Boolean-factor>)  (make-a60:binary $2 $1 $3)])
+                         [(<Boolean-term> OR <Boolean-factor>)  (make-a60:binary 'bool 'bool $2 $1 $3)])
          
          (<implication> [(<Boolean-term>) $1]
-                        [(<implication> IMPLIES <Boolean-term>) (make-a60:binary $2 $1 $3)])
+                        [(<implication> IMPLIES <Boolean-term>) (make-a60:binary 'bool 'bool $2 $1 $3)])
          (<simple-Boolean> [(<implication>) $1]
-                           [(<simple-Boolean> EQUIV <implication>) (make-a60:binary $2 $1 $3)])
+                           [(<simple-Boolean> EQUIV <implication>) (make-a60:binary 'bool 'bool $2 $1 $3)])
          (<Boolean-expression> [(<simple-Boolean>) $1]
                                [(IF <Boolean-expression> 
                                     THEN <simple-Boolean> 
@@ -362,8 +361,8 @@
      (define-a60-structs
       ;; Expressions
       (if (test then else))
-      (unary (op arg))
-      (binary (op arg1 arg2))
+      (unary (type argtype op arg))
+      (binary (type argtype op arg1 arg2))
       (subscript (array index))
       (variable (name indices))
       (app (func args))
