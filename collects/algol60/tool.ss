@@ -5,7 +5,8 @@
            (lib "class.ss")
            "parse.ss"
            "simplify.ss"
-           "compile.ss")
+           "compile.ss"
+	   (lib "embed.ss" "compiler"))
 
   (provide tool@)
 
@@ -61,10 +62,17 @@
           (define/public (render-value value settings port port-write) (write value port))
           (define/public (render-value/format value settings port port-write) (write value port))
           (define/public (unmarshall-settings x) x)
-	  (define/public (create-executable fn parent . args)
-	    (message-box "Unsupported"
-			 "Sorry - executables are not supported for Algol 60"
-			 parent))
+	  (define/public (create-executable settings parent src-file dest-file)
+	    (let ([code (compile-simplified (simplify (parse-a60-file src-file)))])
+	      (make-embedding-executable dest-file
+					 #f #f
+					 '((#f (lib "base.ss" "algol60")))
+					 null
+					 (compile
+					  `(begin
+					     (require (lib "base.ss" "algol60"))
+					     ,code))
+					 null)))
 	  (define/public (get-one-line-summary) "Algol 60 (not Scheme at all!)")
           
           (super-instantiate ())))
