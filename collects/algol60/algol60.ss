@@ -17,13 +17,16 @@
          [else
           (compile-statement stmt next-label context)]))
      
-     (define-struct a60:array (vec dimens))
-     
      ;; run-time support:
+     
+     (define-struct a60:array (vec dimens))
+     (define-struct a60:switch (choices))
+     
      (define undefined (letrec ([x x]) x))
      (define (check-boolean b) b)
      (define (goto f) (f))
-     (define (get-value v) v)
+     (define (get-value v) (v))
+     
      (define (make-array . dimens)
        (make-a60:array
         ((let loop ([dimens dimens])
@@ -54,6 +57,11 @@
          (if (null? (cdr indices))
              (vector-set! v (- (car indices) (car dimens)) val)
              (loop (vector-ref v (- (car indices) (car dimens)) (cdr indices) (cddr dimens))))))
+     
+     (define (make-switch . choices)
+       (make-a60:switch (list->vector choices)))
+     (define (switch-ref sw index)
+       (vector-ref (a60:switch-choices sw) index))
      
      (define (compile-block decls statements next-label context)
        (let ([context (foldl (lambda (decl context)
@@ -107,7 +115,8 @@
                                                            (cdr array))))])
                                      arrays)]
                                [($ a60:switch-decl name exprs)
-                                `([,name (make-switch ,@(map (lambda (e) (compile-expression e context))))])]
+                                `([,name (make-switch ,@(map (lambda (e) `(lambda () ,(compile-expression e context)))
+                                                             exprs))])]
                                [else (error "can't compile decl")]))
                            decls))
                    ,@(cdr 
@@ -134,9 +143,9 @@
           `(,next-label)]
          [($ a60:call proc args)
           `(begin
-             (,(compile-expression proc context) ,@(map (lambda (arg)
-                                                          (compile-expression arg context))
-                                                        args))
+             (,(compile-expression proc context) 
+              ,@(map (lambda (arg) (compile-argument arg context))
+                     args))
              (,next-label))]
          [($ a60:assign vars val)
           `(begin
@@ -167,6 +176,9 @@
          [(? (lambda (x) (and (syntax? x) (string? (syntax-e x)))) n) n]
          [(? identifier? i) i]
          [(? symbol? i) (datum->syntax-object #f i)]
+         [($ a60:subscript array index)
+          ;; Must be a switch index
+          `(switch-ref ,array ,(compile-expression index context))]
          [($ a60:binary op e1 e2)
           `(,op ,(compile-expression e1 context) ,(compile-expression e2 context))]
          [($ a60:unary op e1)
@@ -187,9 +199,17 @@
                          (var-binding var context))])]
          [($ a60:app func args)
           `(,(compile-expression func context)
-            ,@(map (lambda (e) (compile-expression e context))
+            ,@(map (lambda (e) (compile-argument e context))
                    args))]
          [else (error 'compile-expression "can't compile expression ~a" expr)]))
+     
+     (define (compile-argument arg context)
+       (cond
+         [(a60:variable? arg)
+          `(case-lambda
+             [() ,(compile-expression arg context)]
+             [(val)  ,(compile-statement (make-a60:assign (list arg) 'val) 'void context)])]
+         [else `(lambda () ,(compile-expression arg context))]))
      
      ;; --------------------
      

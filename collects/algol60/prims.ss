@@ -41,18 +41,19 @@
     (eq? a b))
   
   (define (sign v)
-    (cond
-      [(< v 0) -1]
-      [(> v 0) 1]
-      [else 0]))
-  
+    (let ([v (v)])
+      (cond
+        [(< v 0) -1]
+        [(> v 0) 1]
+        [else 0])))
+    
   (define (entier v)
-    (inexact->exact (floor v)))
+    (inexact->exact (floor (v))))
   
   (define (prints v)
-    (printf "~a~n" v))
+    (printf "~a~n" (v)))
   
   (define (printn v)
-    (printf "~a~n" v)))
+    (printf "~a~n" (v))))
 
   

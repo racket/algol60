@@ -55,7 +55,7 @@
                                            (make-a60:binary #'<=
                                                             (make-a60:binary #'*
                                                                              (make-a60:binary #'- variable end)
-                                                                             (make-a60:unary #'sign step))
+                                                                             (make-a60:app #'sign (list step)))
                                                             #'0)
                                            (make-a60:assign (list variable) (make-a60:binary #'+ variable step))
                                            #t)]
