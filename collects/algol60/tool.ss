@@ -46,7 +46,7 @@
               [(x) (void)]))
           (define/public (default-settings) null)
           (define/public (default-settings? x) #t)
-          (define/public (front-end input settings)
+          (define/private (front-end input settings)
             (let-values ([(port name)
                           (if (string? input)
                               (values (open-input-file input) (path->complete-path input))
@@ -64,6 +64,8 @@
 		    (compile-simplified 
 		     (simplify (parse-a60-port port name) base-importing-stx) 
 		     base-importing-stx)))))
+          (define/public (front-end/complete-program input settings) (front-end input settings))
+          (define/public (front-end/interaction input settings) (front-end input settings))
           (define/public (get-style-delta) #f)
           (define/public (get-language-position) (list "Algol 60"))
           (define/public (get-language-name) "Algol 60")
