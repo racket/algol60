@@ -18,16 +18,21 @@
       (define (phase1) (void))
       (define (phase2) 
         (drscheme:language-configuration:add-language
-         (make-object (override-render-value-set
+         (make-object (override-mrflow-methods
                        ((drscheme:language:get-default-mixin) 
                         lang%)))))
       
-      (define (override-render-value-set %)
+      (define (override-mrflow-methods %)
         (class %
-          (inherit [super-render-value-set render-value-set])
+          (inherit [super-render-value-set render-value-set]
+                   [super-get-mrflow-primitives-filename get-mrflow-primitives-filename])
           (define/override (render-value-set . x)
             ;; needs to be filled in!
             (super-render-value-set . x))
+          (define/override (get-mrflow-primitives-filename)
+            (build-path (collection-path "mrflow")
+                        "primitives"
+                        "algol60.ss"))
           (super-instantiate ())))
 
       (define lang%
