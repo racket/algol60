@@ -5,7 +5,7 @@
            (lib "class.ss")
            "parse.ss"
            "simplify.ss"
-           "algol60.ss")
+           "compile.ss")
 
   (provide tool@)
 

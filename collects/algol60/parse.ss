@@ -23,6 +23,8 @@
                                    EOF
                                    UNPARSEABLE))
      
+     (define stx-for-original-property (read-syntax #f (open-input-string "original")))
+     
      (define-syntax (token stx)
        (syntax-case stx ()
          [(_ name val)
@@ -37,15 +39,16 @@
                           [get-end-pos (datum->syntax-object name 'get-end-pos)])
               (syntax (let ([start (get-start-pos)]
                             [end (get-end-pos)])
-                        (token-name (datum->syntax-object 
-                                     #f val
-                                     (list
-                                      source-name
-                                      (position-line start)
-                                      (position-col start)
-                                      (position-offset start)
-                                      (- (position-offset end)
-                                         (position-offset start)))))))))]))
+                        (token-name 
+                         (datum->syntax-object #f val
+                                               (list
+                                                source-name
+                                                (position-line start)
+                                                (position-col start)
+                                                (position-offset start)
+                                                (- (position-offset end)
+                                                   (position-offset start)))
+                                               stx-for-original-property))))))]))
      (define-syntax (ttoken stx)
        (syntax-case stx ()
          [(_ name)
@@ -80,23 +83,23 @@
         [begin (ttoken BEGIN)]
         [(@ end (lex:comment)) (ttoken BEGIN)]
         [end (ttoken END)]
-        [^ (token POWER #'expt)]
-        [+ (token PLUS #'+)]
-        [- (token MINUS #'-)]
-        [* (token TIMES #'*)]
-        [/ (token SLASH #'/)]
-        [div (token DIVIDE #'quotient)]
+        [^ (token POWER 'expt)]
+        [+ (token PLUS '+)]
+        [- (token MINUS '-)]
+        [* (token TIMES '*)]
+        [/ (token SLASH '/)]
+        [div (token DIVIDE 'quotient)]
         [< (token LESS #'<)]
-        [<= (token LESS-OR-EQUAL #'<=)]
-        [= (token EQUAL #'=)]
-        [> (token GREATER #'>)]
-        [>= (token GREATER-OR-EQUAL #'>=)]
-        [!= (token NOT-EQUAL #'!=)]
-        [! (token NEGATE #'!)]
-        [& (token AND #'&)]
-        [#\| (token OR #'\|)]
-        [=> (token IMPLIES #'=>)]
-        [== (token EQUIV #'==)]
+        [<= (token LESS-OR-EQUAL '<=)]
+        [= (token EQUAL '=)]
+        [> (token GREATER '>)]
+        [>= (token GREATER-OR-EQUAL '>=)]
+        [!= (token NOT-EQUAL '!=)]
+        [! (token NEGATE '!)]
+        [& (token AND '&)]
+        [#\| (token OR '\|)]
+        [=> (token IMPLIES '=>)]
+        [== (token EQUIV '==)]
         [:= (ttoken ASSIGN)]
         [#\, (ttoken COMMA)]
         [: (ttoken COLON)]

@@ -1,5 +1,5 @@
 (module base mzscheme
-  (require "algol60.ss"
+  (require "compile.ss"
            "prims.ss")
 
   (provide (all-from "prims.ss")
