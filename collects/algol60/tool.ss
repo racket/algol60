@@ -63,6 +63,7 @@
 		     base-importing-stx)))))
           (define/public (get-style-delta) #f)
           (define/public (get-language-position) (list "Algol 60"))
+          (define/public (get-language-name) "Algol 60")
           (define/public (get-language-numbers) (list 10))
           (define/public (get-teachpack-names) null)
           (define/public (marshall-settings x) x)
