@@ -49,6 +49,10 @@
                   [n (current-namespace)])
               (run-in-user-thread
                (lambda ()
+		 (error-display-handler 
+		  (drscheme:debug:make-debug-error-display-handler (error-display-handler)))
+		 (current-eval 
+		  (drscheme:debug:make-debug-eval-handler (current-eval)))
                  (with-handlers ([void (lambda (x)
                                          (printf "~a~n"
                                                  (exn-message x)))])
@@ -57,6 +61,8 @@
           (define/public (render-value value settings port port-write) (write value port))
           (define/public (render-value/format value settings port port-write) (write value port))
           (define/public (unmarshall-settings x) x)
+	  (define/public (create-executable . args) (error "can't do that, yet"))
+	  (define/public (get-one-line-summary) "Algol 60 (not Scheme at all!)")
           
           (super-instantiate ())))
       
