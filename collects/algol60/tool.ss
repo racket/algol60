@@ -97,7 +97,7 @@
           (define/public (render-value value settings port port-write) (write value port))
           (define/public (render-value/format value settings port port-write width) (write value port))
           (define/public (unmarshall-settings x) x)
-	  (define/public (create-executable settings parent src-file)
+	  (define/public (create-executable settings parent src-file teachpacks)
 	    (let ([dst-file (drscheme:language:put-executable
 			     parent src-file #f #f
 			     (string-constant save-a-mzscheme-stand-alone-executable))])
