@@ -128,7 +128,7 @@
        (match statement
          [($ a60:block decls statements)
           (compile-block decls statements next-label num-label context)]
-         [($ a60:if test ($ a60:goto then) ($ a60:goto else))
+         [($ a60:branch test ($ a60:goto then) ($ a60:goto else))
           `(if (check-boolean ,(compile-expression test context)) 
                (goto ,then ,num-label) 
                (goto ,else ,num-label))]
@@ -177,9 +177,11 @@
          [(? identifier? i) (compile-expression (make-a60:variable i null) context)]
          [(? symbol? i) (datum->syntax-object #f i)]
          [($ a60:subscript array index)
-          ;; Must be a switch index
-          (at array
-              `(switch-ref ,array ,(compile-expression index context)))]
+          ;; Maybe a switch index, or maybe an array reference
+	  (at array
+	      (if (array-element? array context)
+		  `(array-ref ,array ,(compile-expression index context))
+		  `(switch-ref ,array ,(compile-expression index context))))]
          [($ a60:binary op e1 e2)
           (at op
               `(,op ,(compile-expression e1 context) ,(compile-expression e2 context)))]
@@ -213,6 +215,10 @@
                 values
                 ,@(map (lambda (e) (compile-argument e context))
                        args)))]
+         [($ a60:if test then else)
+          `(if (check-boolean ,(compile-expression test context))
+	       ,(compile-expression then context)
+	       ,(compile-expression else context))]
          [else (error 'compile-expression "can't compile expression ~a" expr)]))
      
      (define (expression-location expr)

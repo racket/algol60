@@ -33,7 +33,7 @@
                             [cont-label (gensym 'if-cont)])
                         (loop
                          (list*
-                          (make-a60:if test (make-a60:goto then-label) (make-a60:goto else-label))
+                          (make-a60:branch test (make-a60:goto then-label) (make-a60:goto else-label))
                           (make-a60:label then-label then)
                           (make-a60:goto cont-label)
                           (make-a60:label else-label else)
@@ -236,7 +236,7 @@
          [($ a60:block decls statements)
           (printf "BEGIN~n")
           (print-simplified-block decls statements indent #f)]
-         [($ a60:if test ($ a60:goto then) ($ a60:goto else))
+         [($ a60:branch test ($ a60:goto then) ($ a60:goto else))
           (printf "IF ")
           (print-expression test)
           (printf " THEN GOTO ~a ELSE GOTO ~a;~n" then else)]
