@@ -20,7 +20,8 @@
                                    NEGATE AND OR IMPLIES EQUIV
                                    COMMA COLON SEMICOLON
                                    OPEN CLOSE OPENSQ CLOSESQ
-                                   EOF))
+                                   EOF
+                                   UNPARSEABLE))
      
      (define-syntax (token stx)
        (syntax-case stx ()
@@ -51,8 +52,8 @@
           (identifier? (syntax name))
           (syntax (token name 'name))]))
      
-     (define (lexer source-name)
-       (lex
+     (define (lex source-name)
+       (lexer
         [(+ (lex:whitespace)) (void)]
         [true (token <logical-value> #t)]
         [false (token <logical-value> #f)]
@@ -111,14 +112,36 @@
             (@ (* (lex:digit)) #\. (+ (lex:digit)))) (token <unsigned-float> (string->number (get-lexeme)))]
         [(@ #\` (* (^ #\' #\`)) #\') (let ([s (get-lexeme)])
                                        (token <string> (substring s 1 (sub1 (string-length s)))))]
-        [(eof) (ttoken EOF)]))
-
-     (define parse
+        [(eof) (ttoken EOF)]
+        [(- #\000 #\377) (token UNPARSEABLE (string->symbol (get-lexeme)))]))
+     
+     (define (parse read-port source-name)
        (parser
         (tokens non-terminals)
         (start <program>)
         (end EOF)
-        (error (lambda () (error "parse error")))
+        (error (lambda (tok) 
+                 (let* ([stx (vector-ref (struct->vector tok) 2)]
+                        [line (syntax-line stx)]
+                        [col (syntax-column stx)]
+                        [pos (syntax-position stx)])
+                   (raise
+                    (make-exn:read
+                     (string->immutable-string
+                      (format "~aparse error near ~a"
+                              (cond
+                                [(not (error-print-source-location)) ""]
+                                [(and line col)
+                                 (format "~a:~a:~a: " source-name line col)]
+                                [pos
+                                 (format "~a::~a: " source-name pos)]
+                                [else
+                                 (format "~a: " source-name)])
+                              (syntax-e stx)))
+                     (current-continuation-marks)
+                     read-port
+                     source-name line col pos (syntax-span stx))))))
+        (suppress)
         (grammar 
          ;; ==================== Expressions ====================
          (<expression> [(<arithmetic-expression>) $1]
@@ -262,7 +285,7 @@
          (<actual-parameter-list> [(<actual-parameter>) (list $1)]
                                   [(<actual-parameter-list> <parameter-delimiter> <actual-parameter>)
                                    (append $1 (list $3))])
-         (<actual-parameter-part> ; [() null] ; <<< omitted, because we'll parse it as a variable at first
+         (<actual-parameter-part> [() null]
                                   [(OPEN <actual-parameter-list> CLOSE) $2])
          (<procedure-statement> [(<identifier> <actual-parameter-part>) (make-a60:call $1 $2)])
          ;; ==================== Declarations ====================
@@ -367,13 +390,14 @@
      
      (define (parse-a60-port port file)
        (let ([buf (make-lex-buf port)]
-             [lexer (lexer file)])
-         (parse (lambda () 
-                  (let loop ()
-                    (let ([v (lexer buf)])
-                      (if (void? v)
-                          (loop)
-                          v)))))))
+             [lexer (lex file)])
+         ((parse port file)
+          (lambda () 
+            (let loop ()
+              (let ([v (lexer buf)])
+                (if (void? v)
+                    (loop)
+                    v)))))))
      
      (define (parse-a60-file file)
        (with-input-from-file file

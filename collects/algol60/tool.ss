@@ -22,17 +22,21 @@
           (define/public (default-settings) null)
           (define/public (default-settings? x) #t)
           (define/public (front-end input settings)
-            (let ([port (if (input-port? input)
-                            input
-                            (open-input-string
-                             (send (drscheme:language:text/pos-text input)
-                                   get-text
-                                   (drscheme:language:text/pos-start input)
-                                   (drscheme:language:text/pos-end input))))])
+            (let-values ([(port name)
+                          (if (string? input)
+                              (values (open-input-file input) (path->complete-path input))
+                              (let ([text (drscheme:language:text/pos-text input)])
+                                (values
+                                 (open-input-string
+                                  (send text
+                                        get-text
+                                        (drscheme:language:text/pos-start input)
+                                        (drscheme:language:text/pos-end input)))
+                                 text)))])
               (lambda ()
                 (if (eof-object? (peek-char port))
                     eof
-                    (compile-simplified (simplify (parse-a60-port port 'drscheme)))))))
+                    (compile-simplified (simplify (parse-a60-port port name)))))))
           (define/public (get-style-delta) #f)
           (define/public (get-language-position) (list "Algol 60"))
           (define/public (get-language-numbers) (list 10))

@@ -86,13 +86,15 @@
                              (match decl
                                [($ a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
                                 `([,var
-                                   (lambda ,arg-vars
+                                   (lambda (kont . ,arg-vars)
                                      (let ,(map (lambda (var)
                                                   `[,var (get-value ,var)])
                                                 by-value-vars)
-                                       ,(let ([result-var (gensym 'prec-result)])
-                                          `(let ([,result-var undefined])
-                                             ,(compile-a60 body `(lambda () ,result-var)
+                                       ,(let ([result-var (gensym 'prec-result)]
+                                              [done (gensym 'done)])
+                                          `(let* ([,result-var undefined]
+                                                  [,done (lambda () (kont ,result-var))])
+                                             ,(compile-a60 body done
                                                            (add-settable-procedure
                                                             (add-bindings
                                                              context
@@ -144,11 +146,10 @@
          [($ a60:dummy)
           `(,next-label)]
          [($ a60:call proc args)
-          `(begin
-             (,(compile-expression proc context) 
-              ,@(map (lambda (arg) (compile-argument arg context))
-                     args))
-             (,next-label))]
+          `(,(compile-expression proc context)
+            (lambda (val) (,next-label))
+            ,@(map (lambda (arg) (compile-argument arg context))
+                   args))]
          [($ a60:assign vars val)
           `(begin
              (let ([val ,(compile-expression val context)])
@@ -201,6 +202,7 @@
                          (var-binding var context))])]
          [($ a60:app func args)
           `(,(compile-expression func context)
+            values
             ,@(map (lambda (e) (compile-argument e context))
                    args))]
          [else (error 'compile-expression "can't compile expression ~a" expr)]))

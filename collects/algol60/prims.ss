@@ -41,26 +41,26 @@
       (raise-type-error '== "boolean" 1 a b))
     (eq? a b))
   
-  (define (sign v)
-    (let ([v (v)])
-      (cond
-        [(< v 0) -1]
-        [(> v 0) 1]
-        [else 0])))
+  (define (sign k v)
+    (k (let ([v (v)])
+         (cond
+           [(< v 0) -1]
+           [(> v 0) 1]
+           [else 0]))))
     
-  (define (entier v)
-    (inexact->exact (floor (v))))
+  (define (entier k v)
+    (k (inexact->exact (floor (v)))))
   
-  (define (printsln v)
-    (printf "~a~n" (v)))
+  (define (printsln k v)
+    (k (printf "~a~n" (v))))
   
-  (define (printnln v)
-    (printf "~a~n" (v)))
+  (define (printnln k v)
+    (k (printf "~a~n" (v))))
   
-  (define (prints v)
-    (printf "~a" (v)))
+  (define (prints k v)
+    (k (printf "~a" (v))))
   
-  (define (printn v)
-    (printf "~a" (v))))
+  (define (printn k v)
+    (k (printf "~a" (v)))))
 
   
