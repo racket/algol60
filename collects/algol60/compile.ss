@@ -89,8 +89,9 @@
                                                             #f)))))])
                               (if add-to-top-level?
                                   `([,var
-                                     (begin (namespace-set-variable-value! ',var ,code)
-                                            (namespace-variable-value ',var))])
+                                     (let ([tmp ,code])
+                                       (namespace-set-variable-value! ',var tmp)
+                                       tmp)])
                                   `([,var
                                      ,code])))]
 			   [($ a60:type-decl type ids)
