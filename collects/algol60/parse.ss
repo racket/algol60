@@ -1,6 +1,7 @@
 #cs(module parse mzscheme
      (require (lib "lex.ss" "parser-tools")
               (lib "yacc.ss" "parser-tools")
+              (lib "readerr.ss" "syntax")
               "prims.ss")
      
      (define-lex-abbrevs [lex:letter (: (- #\a #\z) (- #\A #\Z))]
@@ -118,32 +119,19 @@
         [(eof) (ttoken EOF)]
         [(- #\000 #\377) (token UNPARSEABLE (string->symbol (get-lexeme)))]))
      
-     (define (parse read-port source-name)
+     (define parse
        (parser
         (tokens non-terminals)
         (start <program>)
         (end EOF)
         (error (lambda (tok) 
-                 (let* ([stx (vector-ref (struct->vector tok) 2)]
-                        [line (syntax-line stx)]
-                        [col (syntax-column stx)]
-                        [pos (syntax-position stx)])
-                   (raise
-                    (make-exn:read
-                     (string->immutable-string
-                      (format "~aparse error near ~a"
-                              (cond
-                                [(not (error-print-source-location)) ""]
-                                [(and line col)
-                                 (format "~a:~a:~a: " source-name line col)]
-                                [pos
-                                 (format "~a::~a: " source-name pos)]
-                                [else
-                                 (format "~a: " source-name)])
-                              (syntax-e stx)))
-                     (current-continuation-marks)
-                     read-port
-                     source-name line col pos (syntax-span stx))))))
+                 (let ([stx (vector-ref (struct->vector tok) 2)])
+                   (raise-read-error (format "parse error near ~a" (syntax-e stx))
+                                     (syntax-source stx)
+                                     (syntax-line stx)
+                                     (syntax-column stx)
+                                     (syntax-position stx)
+                                     (syntax-span stx)))))
         (suppress)
         (grammar 
          ;; ==================== Expressions ====================
@@ -406,7 +394,7 @@
      (define (parse-a60-port port file)
        (let ([buf (make-lex-buf port)]
              [lexer (lex file)])
-         ((parse port file)
+         (parse
           (lambda () 
             (let loop ()
               (let ([v (lexer buf)])
