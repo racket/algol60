@@ -6,7 +6,7 @@ begin
     integer sum;
     sum:=0;
     for i:=1 step 1 until n do
-      sum:=sum+x;
+        sum:=sum+x;
     SIGMA:=sum;
   end;
   integer q;
