@@ -36,20 +36,19 @@
                                        (string->symbol
                                         (format "token-~a" (syntax-e name))))]
                           [source-name (datum->syntax-object name 'source-name)]
-                          [get-start-pos (datum->syntax-object name 'get-start-pos)]
-                          [get-end-pos (datum->syntax-object name 'get-end-pos)])
-              (syntax (let ([start (get-start-pos)]
-                            [end (get-end-pos)])
-                        (token-name 
-			 (datum->syntax-object #f val
-					       (list
-						source-name
-						(position-line start)
-						(position-col start)
-						(position-offset start)
-						(- (position-offset end)
-						   (position-offset start)))
-					       stx-for-original-property))))))]))
+                          [start-pos (datum->syntax-object name 'start-pos)]
+                          [end-pos (datum->syntax-object name 'end-pos)])
+              (syntax 
+	       (token-name 
+		(datum->syntax-object #f val
+				      (list
+				       source-name
+				       (position-line start-pos)
+				       (position-col start-pos)
+				       (position-offset start-pos)
+				       (- (position-offset end-pos)
+					  (position-offset start-pos)))
+				      stx-for-original-property)))))]))
      (define-syntax (ttoken stx)
        (syntax-case stx ()
          [(_ name)
@@ -110,14 +109,14 @@
         [#\) (ttoken CLOSE)]
         [#\[ (ttoken OPENSQ)]
         [#\] (ttoken CLOSESQ)]
-        [(@ (lex:letter) (* (: (lex:letter) (lex:digit)))) (token <identifier> (string->symbol (get-lexeme)))]
-        [(+ (lex:digit)) (token <unsigned-integer> (string->number (get-lexeme)))]
+        [(@ (lex:letter) (* (: (lex:letter) (lex:digit)))) (token <identifier> (string->symbol lexeme))]
+        [(+ (lex:digit)) (token <unsigned-integer> (string->number lexeme))]
         [(: (@ (+ (lex:digit)) #\. (* (lex:digit)))
-            (@ (* (lex:digit)) #\. (+ (lex:digit)))) (token <unsigned-float> (string->number (get-lexeme)))]
-        [(@ #\` (* (^ #\' #\`)) #\') (let ([s (get-lexeme)])
+            (@ (* (lex:digit)) #\. (+ (lex:digit)))) (token <unsigned-float> (string->number lexeme))]
+        [(@ #\` (* (^ #\' #\`)) #\') (let ([s lexeme])
                                        (token <string> (substring s 1 (sub1 (string-length s)))))]
         [(eof) (ttoken EOF)]
-        [(- #\000 #\377) (token UNPARSEABLE (string->symbol (get-lexeme)))]))
+        [(- #\000 #\377) (token UNPARSEABLE (string->symbol lexeme))]))
      
      (define parse
        (parser
