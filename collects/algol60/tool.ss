@@ -63,7 +63,7 @@
 		  "Algol 60"))
           (define/public (order-manuals x) 
             (values 
-             (list "drscheme" "tour" "help")
+             (list #"drscheme" #"tour" #"help")
              #f))
           (define/public (get-language-name) "Algol 60")
           (define/public (get-language-url) #f)
