@@ -220,25 +220,35 @@
                                       (make-a60:if $2 $4 $6)])
          ;; -------------------- Variables --------------------
          (<subscript-list> [(<arithmetic-expression>) (list $1)]
-                           [(<subscript-list> COMMA <arithmetic-expression>) (append $1 (list $2))])
+                           [(<subscript-list> COMMA <arithmetic-expression>) (append $1 (list $3))])
          (<subscripted-variable> [(<identifier> OPENSQ <subscript-list> CLOSESQ) (make-a60:variable $1 $3)])
          (<variable> [(<identifier>) (make-a60:variable $1 null)]
                      [(<subscripted-variable>) $1])
          ;; -------------------- Function calls --------------------
          (<function-designator> [(<identifier> <actual-parameter-part>) (make-a60:app $1 $2)])
          ;; ==================== Statements ====================
-         (<unlabelled-basic-statement> [(<assignment-statement>) $1]
-                                       [(<go-to-statement>) $1]
-                                       [(<dummy-statement>) $1]
-                                       [(<procedure-statement>) $1])
+         ;;  - - - - - - - - - - non-empty - - - - - - - - - - 
+         (<unlabelled-basic-nonempty-statement> [(<assignment-statement>) $1]
+                                                [(<go-to-statement>) $1]
+                                                [(<procedure-statement>) $1])
+         (<basic-nonempty-statement> [(<unlabelled-basic-nonempty-statement>) $1]
+                                     [(<label> COLON <basic-statement>) (make-a60:label $1 $3)])
+         (<unconditional-nonempty-statement> [(<basic-nonempty-statement>) $1]
+                                             [(<compound-statement>) $1]
+                                             [(<block>) $1])
+         (<nonempty-statement> [(<unconditional-nonempty-statement>) $1]
+                               [(<conditional-statement>) $1]
+                               [(<for-statement>) $1])
+         ;;  - - - - - - - - - - possibly empty - - - - - - - - - -          
+         (<unlabelled-basic-statement> [(<unlabelled-basic-nonempty-statement>) $1]
+                                       [(<dummy-statement>) $1])
          (<basic-statement> [(<unlabelled-basic-statement>) $1]
                             [(<label> COLON <basic-statement>) (make-a60:label $1 $3)])
          (<unconditional-statement> [(<basic-statement>) $1]
-                                    [(<compound-statement>) $1]
-                                    [(<block>) $1])
+                                    [(<unconditional-nonempty-statement>) $1])
          (<statement> [(<unconditional-statement>) $1]
-                      [(<conditional-statement>) $1]
-                      [(<for-statement>) $1])
+                      [(<nonempty-statement>) $1])
+         ;; -------------------- block and compound --------------------
          (<compound-tail> [(<statement> END) (list $1)]
                           [(<statement> SEMICOLON <compound-tail>) (cons $1 $3)])
          (<block-head> [(BEGIN <declaration>) (list $2)]
@@ -335,12 +345,14 @@
                       [(SWITCH) 'switch]
                       [(PROCEDURE) '(procedure #f)]
                       [(<type> PROCEDURE) `(procedure ,$1)])
+         (<nonempty-specification-part> [(<specifier> <identifier-list> SEMICOLON) (list (cons $1 $2))]
+                                        [(<nonempty-specification-part> <specifier> <identifier-list> SEMICOLON)
+                                         (append $1 (list (cons $2 $3)))])
          (<specification-part> [() null]
-                               [(<specifier> <identifier-list> SEMICOLON) (list (cons $1 $2))]
-                               [(<specification-part> <specifier> <identifier-list>) (append $1 (list (cons $2 $3)))])
+                               [(<nonempty-specification-part>) $1])
          (<procedure-heading> [(<identifier> <formal-parameter-part> SEMICOLON <value-part> <specification-part>)
                                (list $1 $2 $4 $5)])
-         (<procedure-body> [(<statement>) $1])
+         (<procedure-body> [(<nonempty-statement>) $1])
          (<procedure-declaration> [(PROCEDURE <procedure-heading> <procedure-body>)
                                    (make-a60:proc-decl #f (car $2) (cadr $2) (caddr $2) (cadddr $2) $3)]
                                   [(<type> PROCEDURE <procedure-heading> <procedure-body>)

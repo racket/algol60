@@ -1,11 +1,12 @@
-#cs(module algol60 mzscheme
+#cs(module algol60 "cmzscheme.ss"
      (require-for-syntax "parse.ss"
                          "simplify.ss"
                          "compile.ss"
                          (lib "file.ss"))
      (require (lib "include.ss")
               "runtime.ss"
-              "prims.ss")
+              "prims.ss"
+              "moreprims.ss")
               
      
      (provide include-algol)

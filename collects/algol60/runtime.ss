@@ -6,6 +6,7 @@
            check-boolean
            goto
            get-value
+           set-target!
            make-array
            array-ref
            array-set!
@@ -19,6 +20,7 @@
   (define (check-boolean b) b)
   (define (goto f) (f))
   (define (get-value v) (v))
+  (define (set-target! t v) (t v))
   
   (define (make-array . dimens)
     (make-a60:array
@@ -49,7 +51,7 @@
     (let loop ([v (a60:array-vec a)][indices indices][dimens (a60:array-dimens a)])
       (if (null? (cdr indices))
           (vector-set! v (- (car indices) (car dimens)) val)
-          (loop (vector-ref v (- (car indices) (car dimens)) (cdr indices) (cddr dimens))))))
+          (loop (vector-ref v (- (car indices) (car dimens))) (cdr indices) (cddr dimens)))))
   
   (define (make-switch . choices)
     (make-a60:switch (list->vector choices)))

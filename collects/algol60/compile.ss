@@ -1,8 +1,9 @@
-#cs(module compile mzscheme
+#cs(module compile "cmzscheme.ss"
      (require "parse.ss"
               "simplify.ss"
               "prims.ss"
               "runtime.ss"
+              "moreprims.ss"
               (lib "match.ss")
               (lib "list.ss"))
      
@@ -112,18 +113,22 @@
                ,@(map (lambda (avar)
                         (let ([var (a60:variable-name avar)])
                           (cond
-                            [(call-by-name-variable? var context)
-                             `(set-target! ,var val)]
-                            [(procedure-result-variable? var context)
-                             `(set! ,(procedure-result-variable-name var context) val)]
-                            [(settable-variable? var context)
-                             (if (own-variable? var context)
-                                 `(set-box! ,var val)
-                                 `(set! ,var val))]
-                            [(array-element? var context)
-                             `(array-set! ,var val ,@(map (lambda (e) (compile-expression e context)) 
-                                                          (a60:variable-indices avar)))]
-                            [else (error "confused by assignment")])))
+                            [(null? (a60:variable-indices avar))
+                             (cond
+                               [(call-by-name-variable? var context)
+                                `(set-target! ,var val)]
+                               [(procedure-result-variable? var context)
+                                `(set! ,(procedure-result-variable-name var context) val)]
+                               [(or (settable-variable? var context)
+                                    (array-element? var context))
+                                (if (own-variable? var context)
+                                    `(set-box! ,var val)
+                                    `(set! ,var val))]
+                               [else (raise-syntax-error #f "confused by assignment" (expression-location var))])]
+                            [else
+                             `(array-set! ,(compile-expression (make-a60:variable var null) context)
+                                          val ,@(map (lambda (e) (compile-expression e context)) 
+                                                     (a60:variable-indices avar)))])))
                       vars))
              (,next-label))]
          [else (error "can't compile statement")]))
@@ -133,7 +138,7 @@
          [(? (lambda (x) (and (syntax? x) (number? (syntax-e x)))) n) n]
          [(? (lambda (x) (and (syntax? x) (boolean? (syntax-e x)))) n) n]
          [(? (lambda (x) (and (syntax? x) (string? (syntax-e x)))) n) n]
-         [(? identifier? i) i]
+         [(? identifier? i) (compile-expression (make-a60:variable i null) context)]
          [(? symbol? i) (datum->syntax-object #f i)]
          [($ a60:subscript array index)
           ;; Must be a switch index
@@ -146,19 +151,25 @@
           (at op
               `(,op ,(compile-expression e1 context)))]
          [($ a60:variable var subscripts)
-          (cond
-            [(call-by-name-variable? var context)
-             `(get-value ,var)]
-            [(or (procedure-result-variable? var context)
-                 (label-variable? var context)
-                 (settable-variable? var context))
-             (if (own-variable? var context)
-                 `(unbox ,var)
-                 var)]
-            [(array-element? var context)
-             `(array-ref ,var ,@(map (lambda (e) (compile-expression e context)) subscripts))]
-            [else (error 'compile-expression "confused by variable use: ~a in: ~a" var 
-                         (var-binding var context))])]
+          (let ([sub (lambda (v)
+                       (if (null? subscripts)
+                           v
+                           `(array-ref ,v ,@(map (lambda (e) (compile-expression e context)) subscripts))))])
+            (cond
+              [(call-by-name-variable? var context)
+               (sub `(get-value ,var))]
+              [(or (procedure-result-variable? var context)
+                   (procedure-variable? var context)
+                   (label-variable? var context)
+                   (settable-variable? var context)
+                   (array-element? var context))
+               (if (own-variable? var context)
+                   (sub `(unbox ,var))
+                   (sub var))]
+              [else (raise-syntax-error
+                     #f
+                     (expression-location var))]))]
+                   
          [($ a60:app func args)
           (at (expression-location func)
               `(,(compile-expression func context)
@@ -182,10 +193,13 @@
      
      (define (compile-argument arg context)
        (cond
-         [(a60:variable? arg)
+         [(and (a60:variable? arg) 
+               (not (procedure-variable? (a60:variable-name arg) context)))
           `(case-lambda
              [() ,(compile-expression arg context)]
              [(val)  ,(compile-statement (make-a60:assign (list arg) 'val) 'void context)])]
+         [(identifier? arg)
+          (compile-argument (make-a60:variable arg null) context)]
          [else `(lambda () ,(compile-expression arg context))]))
      
      (define (at stx expr)
@@ -237,7 +251,7 @@
      
      (define (var-binding var context)
        (if (null? context)
-           #f
+           'procedure
            (let ([m (ormap (lambda (b)
                              (and (module-identifier=? var (car b))
                                   (cdr b)))
@@ -248,6 +262,10 @@
        (let ([v (var-binding var context)])
          (eq? v 'by-name)))
      
+     (define (procedure-variable? var context)
+       (let ([v (var-binding var context)])
+         (eq? v 'procedure)))
+
      (define (procedure-result-variable? var context)
        (let ([v (var-binding var context)])
          (and (pair? v)

@@ -142,7 +142,9 @@
                                                              (make-a60:variable (datum->syntax-object #f x) null)) 
                                                            (cdr extra)))))
               extra-decls))
-        new-statements))
+        (if (null? new-statements)
+            (list (cons (gensym 'other) (make-a60:dummy)))
+            new-statements)))
      
      (define (simplify stmt)
        (match stmt
