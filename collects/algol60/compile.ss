@@ -36,6 +36,7 @@
 				  l)
                                  l))
                            labels-with-numbers)]
+              ;; Build environment by adding labels, then decls:
               [context (foldl (lambda (decl context)
                                 (match decl
                                   [($ a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
@@ -43,17 +44,23 @@
                                   [($ a60:type-decl type ids)
                                    (add-atoms context ids type)]
                                   [($ a60:array-decl type arrays)
-                                   (add-arrays context (map car arrays) (map cdr arrays) type)]
+                                   (add-arrays context 
+                                               (map car arrays) ; names
+                                               (map cdr arrays) ; dimensions
+                                               type)]
                                   [($ a60:switch-decl name exprs)
                                    (add-switch context name)]))
                               (add-labels
                                context
                                labels)
                               decls)])
+         ;; Generate bindings and initialization for all decls,
+         ;; plus all statements (thunked):
 	 (let ([bindings
 		(append
 		 (apply
 		  append
+                  ;; Decls:
 		  (map (lambda (decl)
 			 (match decl
 			   [($ a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
@@ -98,6 +105,8 @@
 							 exprs))])]
 			   [else (error "can't compile decl")]))
 		       decls))
+                 ;; Statements: most of the work is in `compile-statement', but
+                 ;;  we provide the continuation label:
 		 (cdr
 		  (foldr (lambda (stmt label next-label+compiled)
 			   (cons label
@@ -111,12 +120,14 @@
 			 (cons next-label null)
 			 statements
 			 labels)))])
+           ;; Check for duplicate bindings:
 	   (let ([dup  (check-duplicate-identifier (filter identifier? (map car bindings)))])
 	     (when dup
 	       (raise-syntax-error
 		#f
 		"name defined twice"
 		dup)))
+           ;; Generate code; body of leterec jumps to the first statement label.
 	   `(letrec ,bindings (,(caar statements))))))
 
      (define (compile-statement statement next-label context)
@@ -139,6 +150,9 @@
                 ,@(map (lambda (arg) (compile-argument arg context))
                        args)))]
          [($ a60:assign vars val)
+          ;; >>>>>>>>>>>>>>> Start clean-up here <<<<<<<<<<<<<<<<<
+          ;; Lift out the spec-finding part, and use it to generate
+          ;; an expected type that is passed to `compile-expression':
           `(begin
              (let ([val ,(compile-expression val context 'numbool)])
                ,@(map (lambda (avar)
