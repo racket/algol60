@@ -47,7 +47,7 @@
            [(< v 0) -1]
            [(> v 0) 1]
            [else 0]))))
-    
+  
   (define (entier k v)
     (k (inexact->exact (floor (v)))))
   
