@@ -14,18 +14,18 @@
        (datum->syntax-object 
 	ctx
 	(parameterize ([current-compile-context ctx])
-	  (compile-a60 stmt 'void (empty-context)))))
+	  (compile-a60 stmt 'void (empty-context) #t))))
 
      (define current-compile-context (make-parameter #f))
      
-     (define (compile-a60 stmt next-label context)
+     (define (compile-a60 stmt next-label context add-to-top-level?)
        (match stmt
          [($ a60:block decls statements)
-          (compile-block decls statements next-label context)]
+          (compile-block decls statements next-label context add-to-top-level?)]
          [else
           (compile-statement stmt next-label context)]))
      
-     (define (compile-block decls statements next-label context)
+     (define (compile-block decls statements next-label context add-to-top-level?)
        (let* ([labels-with-numbers (map car statements)]
               [labels (map (lambda (l)
                              (if (stx-number? l)
@@ -63,29 +63,35 @@
                   ;; Decls:
 		  (map (lambda (decl)
 			 (match decl
-			   [($ a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
-			    `([,var
-			       (lambda (kont . ,arg-vars)
-                                 ;; Extract by-value variables
-				 (let ,(map (lambda (var)
-					      `[,var (get-value ,var)])
-					    by-value-vars)
-                                   ;; Set up the result variable and done continuation:
-				   ,(let ([result-var (gensym 'prec-result)]
-					  [done (gensym 'done)])
-				      `(let* ([,result-var undefined]
-					      [,done (lambda () (kont ,result-var))])
-                                         ;; Include the compiled body:
-					 ,(compile-a60 body done
-						       (add-settable-procedure
-							(add-bindings
-							 context
-							 arg-vars
-							 by-value-vars
-							 arg-specs)
-							var
-							result-type
-							result-var))))))])]
+                           [($ a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
+                            (let ([code
+                                   `(lambda (kont . ,arg-vars)
+                                      ;; Extract by-value variables
+                                      (let ,(map (lambda (var)
+                                                   `[,var (get-value ,var)])
+                                                 by-value-vars)
+                                        ;; Set up the result variable and done continuation:
+                                        ,(let ([result-var (gensym 'prec-result)]
+                                               [done (gensym 'done)])
+                                           `(let* ([,result-var undefined]
+                                                   [,done (lambda () (kont ,result-var))])
+                                              ;; Include the compiled body:
+                                              ,(compile-a60 body done
+                                                            (add-settable-procedure
+                                                             (add-bindings
+                                                              context
+                                                              arg-vars
+                                                              by-value-vars
+                                                              arg-specs)
+                                                             var
+                                                             result-type
+                                                             result-var)
+                                                            #f)))))])
+                              (if add-to-top-level?
+                                  `([,(gensym 'unused)
+                                     (namespace-set-variable-value! ',var ,code)])
+                                  `([,var
+                                     ,code])))]
 			   [($ a60:type-decl type ids)
 			    (map (lambda (id) `[,id undefined]) ids)]
 			   [($ a60:array-decl type arrays)
@@ -121,19 +127,20 @@
 			 statements
 			 labels)))])
            ;; Check for duplicate bindings:
-	   (let ([dup  (check-duplicate-identifier (filter identifier? (map car bindings)))])
+	   (let ([dup (check-duplicate-identifier (filter identifier? (map car bindings)))])
 	     (when dup
 	       (raise-syntax-error
 		#f
 		"name defined twice"
 		dup)))
            ;; Generate code; body of leterec jumps to the first statement label.
-	   `(letrec ,bindings (,(caar statements))))))
-
+	   `(letrec ,bindings 
+              (,(caar statements))))))
+     
      (define (compile-statement statement next-label context)
        (match statement
          [($ a60:block decls statements)
-          (compile-block decls statements next-label context)]
+          (compile-block decls statements next-label context #f)]
          [($ a60:branch test ($ a60:goto then) ($ a60:goto else))
           `(if (check-boolean ,(compile-expression test context 'bool))
                (goto ,(check-label then context))
@@ -146,7 +153,8 @@
          [($ a60:call proc args)
           (at (expression-location proc)
               `(,(compile-expression proc context 'func)
-                (lambda (val) (,next-label))
+                (lambda (val) 
+                  (,next-label))
                 ,@(map (lambda (arg) (compile-argument arg context))
                        args)))]
          [($ a60:assign vars val)
@@ -426,19 +434,33 @@
                   arg-vars)
              context))
      
+     ;; var-binding : syntax context -> symbol
+     ;; returns an identifier indicating where the var is
+     ;; bound, or 'free if it isn't. The compiler inserts
+     ;; top-level procedure definitions into the namespace; if 
+     ;; the variable is bound there, it is a procedure.
      (define (var-binding var context)
-       (if (null? context)
-           'free
-           (let ([m (ormap (lambda (b)
-			     (if (symbol? (car b))
-				 ;; primitives:
-				 (and (eq? (syntax-e var) (car b))
-				      (cdr b))
-				 ;; everything else:
-				 (and (bound-identifier=? var (car b))
-				      (cdr b))))
-                           (car context))])
-             (or m (var-binding var (cdr context))))))
+       (cond
+         [(null? context)
+          (let/ec k
+            (namespace-variable-value (syntax-e var)
+                                      #t 
+                                      (lambda () (k 'free)))
+            'procedure)]
+         [else
+          (let ([m (var-in-rib var (car context))])
+            (or m (var-binding var (cdr context))))]))
+     
+     (define (var-in-rib var rib)
+       (ormap (lambda (b)
+                (if (symbol? (car b))
+                    ;; primitives:
+                    (and (eq? (syntax-e var) (car b))
+                         (cdr b))
+                    ;; everything else:
+                    (and (bound-identifier=? var (car b))
+                         (cdr b))))
+              rib))
      
      (define (primitive-variable? var context)
        (let ([v (var-binding var context)])
