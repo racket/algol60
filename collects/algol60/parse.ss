@@ -351,8 +351,10 @@
        (syntax-case stx ()
          [(_ (struct-name (field ...)) ...)
           (with-syntax ([(a60:struct ...) (map (lambda (id)
-                                                 (string->symbol
-                                                  (format "a60:~a" (syntax-e id))))
+						 (datum->syntax-object
+						  id
+						  (string->symbol
+						   (format "a60:~a" (syntax-e id)))))
                                                (syntax->list (syntax (struct-name ...))))])
             (syntax (begin (define-struct a60:struct (field ...)) ...
                            (provide (struct a60:struct (field ...)) ...))))]))
