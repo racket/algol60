@@ -310,7 +310,6 @@
              [($ a60:binary type argtype op e1 e2) op]
              [($ a60:unary type argtype op e1) op]
              [($ a60:variable var subscripts) (expression-location var)]
-             [(array-element? var context) (expression-location var)]
              [($ a60:app func args)
               (expression-location func)]
              [else #f])))
