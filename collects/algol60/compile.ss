@@ -88,8 +88,9 @@
                                                              result-var)
                                                             #f)))))])
                               (if add-to-top-level?
-                                  `([,(gensym 'unused)
-                                     (namespace-set-variable-value! ',var ,code)])
+                                  `([,var
+                                     (begin (namespace-set-variable-value! ',var ,code)
+                                            (namespace-variable-value ',var))])
                                   `([,var
                                      ,code])))]
 			   [($ a60:type-decl type ids)
