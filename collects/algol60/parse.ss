@@ -89,7 +89,7 @@
         [* (token TIMES '*)]
         [/ (token SLASH '/)]
         [div (token DIVIDE 'quotient)]
-        [< (token LESS #'<)]
+        [< (token LESS '<)]
         [<= (token LESS-OR-EQUAL '<=)]
         [= (token EQUAL '=)]
         [> (token GREATER '>)]
