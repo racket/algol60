@@ -82,7 +82,7 @@
                    (namespace-attach-module n path)
                    (namespace-require path))))))
           (define/public (render-value value settings port port-write) (write value port))
-          (define/public (render-value/format value settings port port-write) (write value port))
+          (define/public (render-value/format value settings port port-write width) (write value port))
           (define/public (unmarshall-settings x) x)
 	  (define/public (create-executable settings parent src-file dest-file)
 	    (let ([code (compile-simplified (simplify (parse-a60-file src-file)
