@@ -20,7 +20,11 @@
   (define (check-boolean b) b)
   (define (goto f) (f))
   (define (get-value v) (v))
-  (define (set-target! t v) (t v))
+  (define (set-target! t name v)
+    (unless (procedure-arity-includes? t 1)
+      (error 'assignment "formal-argument variable ~a is assigned, but actual argument was not assignable"
+             name))
+    (t v))
   
   (define (make-array . dimens)
     (make-a60:array

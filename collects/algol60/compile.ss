@@ -59,13 +59,16 @@
 			   [($ a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
 			    `([,var
 			       (lambda (kont . ,arg-vars)
+                                 ;; Extract by-value variables
 				 (let ,(map (lambda (var)
 					      `[,var (get-value ,var)])
 					    by-value-vars)
+                                   ;; Set up the result variable and done continuation:
 				   ,(let ([result-var (gensym 'prec-result)]
 					  [done (gensym 'done)])
 				      `(let* ([,result-var undefined]
 					      [,done (lambda () (kont ,result-var))])
+                                         ;; Include the compiled body:
 					 ,(compile-a60 body done
 						       (add-settable-procedure
 							(add-bindings
@@ -140,23 +143,24 @@
              (let ([val ,(compile-expression val context 'numbool)])
                ,@(map (lambda (avar)
                         (let ([var (a60:variable-name avar)])
-                          (cond
-                            [(null? (a60:variable-indices avar))
-                             (cond
-			       [(call-by-name-variable? var context)
-                                `(set-target! ,var val)]
-                               [(procedure-result-variable? var context)
-                                `(set! ,(procedure-result-variable-name var context) val)]
-                               [(or (settable-variable? var context)
-                                    (array-element? var context))
-                                (if (own-variable? var context)
-                                    `(set-box! ,var val)
-                                    `(set! ,var val))]
-                               [else (raise-syntax-error #f "confused by assignment" (expression-location var))])]
-                            [else
-                             `(array-set! ,(compile-expression (make-a60:variable var null) context 'numbool)
-                                          val ,@(map (lambda (e) (compile-expression e context 'num)) 
-                                                     (a60:variable-indices avar)))])))
+                          (at var
+                              (cond
+                                [(null? (a60:variable-indices avar))
+                                 (cond
+                                   [(call-by-name-variable? var context)
+                                    `(set-target! ,var ',var val)]
+                                   [(procedure-result-variable? var context)
+                                    `(set! ,(procedure-result-variable-name var context) val)]
+                                   [(or (settable-variable? var context)
+                                        (array-element? var context))
+                                    (if (own-variable? var context)
+                                        `(set-box! ,var val)
+                                        `(set! ,var val))]
+                                   [else (raise-syntax-error #f "confused by assignment" (expression-location var))])]
+                                [else
+                                 `(array-set! ,(compile-expression (make-a60:variable var null) context 'numbool)
+                                              val ,@(map (lambda (e) (compile-expression e context 'num)) 
+                                                         (a60:variable-indices avar)))]))))
                       vars))
              (,next-label))]
          [else (error "can't compile statement")]))
@@ -217,6 +221,10 @@
 			  name
 			  var
 			  var)))]
+              [(and (procedure-result-variable? var context)
+                    (not (eq? type 'func)))
+               (at var
+                   (procedure-result-variable-name var context))]
               [(or (procedure-result-variable? var context)
                    (procedure-variable? var context)
                    (label-variable? var context)

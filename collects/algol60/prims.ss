@@ -97,10 +97,10 @@
     (k (printf "~a~n" (get-string 'printsln v))))
   
   (define (printnln k v)
-    (k (printf "~a~n" (get-string 'printnln v))))
+    (k (printf "~a~n" (get-number 'printnln v))))
   
   (define (prints k v)
-    (k (printf "~a" ((get-string 'prints v)))))
+    (k (printf "~a" (get-string 'prints v))))
   
   (define (printn k v)
-    (k (printf "~a" ((get-string 'printn v))))))
+    (k (printf "~a" (get-number 'printn v)))))
