@@ -9,8 +9,6 @@ begin
       sum:=sum+x;
     SIGMA:=sum;
   end;
-  begin
-    integer q;
-    printnln(SIGMA(q*2-1, q, 7));
-  end;
+  integer q;
+  printnln(SIGMA(q*2-1, q, 7));
 end
