@@ -7,7 +7,8 @@
            "simplify.ss"
            "compile.ss"
 	   "get-base.ss"
-	   (lib "embed.ss" "compiler"))
+	   (lib "embed.ss" "compiler")
+	   (lib "string-constant.ss" "string-constants"))
 
   (provide tool@)
 
@@ -88,7 +89,9 @@
           (define/public (render-value/format value settings port port-write width) (write value port))
           (define/public (unmarshall-settings x) x)
 	  (define/public (create-executable settings parent src-file)
-	    (let ([dst-file (drscheme:language:put-executable parent src-file #f #f)])
+	    (let ([dst-file (drscheme:language:put-executable
+			     parent src-file #f #f
+			     (string-constant save-a-mzscheme-stand-alone-executable))])
 	      (when dst-file
 		(let ([code (compile-simplified (simplify (parse-a60-file src-file)
 							  base-importing-stx)
