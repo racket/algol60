@@ -1,13 +1,14 @@
 #cs(module parse mzscheme
      (require (lib "lex.ss" "parser-tools")
+              (prefix : (lib "lex-sre.ss" "parser-tools"))
               (lib "yacc.ss" "parser-tools")
               (lib "readerr.ss" "syntax")
               "prims.ss")
      
-     (define-lex-abbrevs [lex:letter (: (- #\a #\z) (- #\A #\Z))]
-                         [lex:digit (- #\0 #\9)]
-                         [lex:whitespace (: #\newline #\return #\tab #\space #\vtab)]
-                         [lex:comment (@ (* lex:whitespace) "comment" (* (^ #\;)) #\;)])
+     (define-lex-abbrevs [lex:letter (:or (:/ #\a #\z) (:/ #\A #\Z))]
+                         [lex:digit (:/ #\0 #\9)]
+                         [lex:whitespace (:or #\newline #\return #\tab #\space #\vtab)]
+                         [lex:comment (:: (:* lex:whitespace) "comment" (:* (:~ #\;)) #\;)])
      
      (define-tokens non-terminals (<logical-value> 
                                    <type> <identifier> 
@@ -57,7 +58,7 @@
      
      (define (lex source-name)
        (lexer
-        [(+ lex:whitespace) (void)]
+        [(:+ lex:whitespace) (void)]
         ["true" (token <logical-value> #t)]
         ["false" (token <logical-value> #f)]
         ["real" (token <type> 'real)]
@@ -79,9 +80,9 @@
         ["switch" (ttoken SWITCH)]
         ["label" (ttoken LABEL)]
         ["value" (ttoken VALUE)]
-        [(@ "begin" lex:comment) (ttoken BEGIN)]
+        [(:: "begin" lex:comment) (ttoken BEGIN)]
         ["begin" (ttoken BEGIN)]
-        [(@ "end" lex:comment) (ttoken BEGIN)]
+        [(:: "end" lex:comment) (ttoken BEGIN)]
         ["end" (ttoken END)]
         ["^" (token POWER 'expt)]
         ["+" (token PLUS '+)]
@@ -103,20 +104,20 @@
         [":=" (ttoken ASSIGN)]
         ["," (ttoken COMMA)]
         [":" (ttoken COLON)]
-        [(@ ";" lex:comment) (ttoken SEMICOLON)]
+        [(:: ";" lex:comment) (ttoken SEMICOLON)]
         [";" (ttoken SEMICOLON)]
         ["(" (ttoken OPEN)]
         [")" (ttoken CLOSE)]
         ["[" (ttoken OPENSQ)]
         ["]" (ttoken CLOSESQ)]
-        [(@ lex:letter (* (: lex:letter lex:digit))) (token <identifier> (string->symbol lexeme))]
-        [(+ lex:digit) (token <unsigned-integer> (string->number lexeme))]
-        [(: (@ (+ lex:digit) #\. (* lex:digit))
-            (@ (* lex:digit) #\. (+ lex:digit))) (token <unsigned-float> (string->number lexeme))]
-        [(@ #\` (* (^ #\' #\`)) #\') (let ([s lexeme])
-                                       (token <string> (substring s 1 (sub1 (string-length s)))))]
+        [(:: lex:letter (:* (:or lex:letter lex:digit))) (token <identifier> (string->symbol lexeme))]
+        [(:+ lex:digit) (token <unsigned-integer> (string->number lexeme))]
+        [(:or (:: (:+ lex:digit) #\. (:* lex:digit))
+              (:: (:* lex:digit) #\. (:+ lex:digit))) (token <unsigned-float> (string->number lexeme))]
+        [(:: #\` (:* (:~ #\' #\`)) #\') (let ([s lexeme])
+                                          (token <string> (substring s 1 (sub1 (string-length s)))))]
         [(eof) (ttoken EOF)]
-        [(- #\000 #\377) (token UNPARSEABLE (string->symbol lexeme))]))
+        [any-char (token UNPARSEABLE (string->symbol lexeme))]))
      
      (define parse
        (parser
