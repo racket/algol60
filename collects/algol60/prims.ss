@@ -2,7 +2,8 @@
   (provide != ! & \|
            => ==
            sign entier
-           prints printn)
+           prints printn
+           printsln printnln)
   
   (define (!= a b)
     (not (= a b)))
@@ -50,10 +51,16 @@
   (define (entier v)
     (inexact->exact (floor (v))))
   
-  (define (prints v)
+  (define (printsln v)
     (printf "~a~n" (v)))
   
+  (define (printnln v)
+    (printf "~a~n" (v)))
+  
+  (define (prints v)
+    (printf "~a" (v)))
+  
   (define (printn v)
-    (printf "~a~n" (v))))
+    (printf "~a" (v))))
 
   

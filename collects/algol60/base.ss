@@ -2,8 +2,7 @@
   (require "prims.ss"
            "algol60.ss")
   
-  (provide sign entier
-           prints printn
+  (provide (all-from "prims.ss")
            #%top
            #%app
            #%datum))
