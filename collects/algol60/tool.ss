@@ -72,7 +72,7 @@
 		  "Algol 60"))
           (define/public (get-language-name) "Algol 60")
           (define/public (get-language-url) #f)
-          (define/public (get-language-numbers) (list 1000 10))
+          (define/public (get-language-numbers) (list 1 10))
           (define/public (get-teachpack-names) null)
           (define/public (marshall-settings x) x)
           (define/public (on-execute settings run-in-user-thread)
