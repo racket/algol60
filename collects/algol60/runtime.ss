@@ -11,7 +11,8 @@
            array-ref
            array-set!
            make-switch
-           switch-ref)
+           switch-ref
+           coerce)
            
   (define-struct a60:array (vec dimens))
   (define-struct a60:switch (choices))
@@ -25,6 +26,11 @@
       (error 'assignment "formal-argument variable ~a is assigned, but actual argument was not assignable"
              name))
     (t v))
+  (define (coerce type v)
+    (cond
+      [(eq? type 'integer) (inexact->exact (floor v))]
+      [(eq? type 'real) (exact->inexact (floor v))]
+      [else v]))
   
   (define (make-array . dimens)
     (make-a60:array

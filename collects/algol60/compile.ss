@@ -148,19 +148,24 @@
                                 [(null? (a60:variable-indices avar))
                                  (cond
                                    [(call-by-name-variable? var context)
-                                    `(set-target! ,var ',var val)]
+                                    => (lambda (spec)
+                                         `(set-target! ,var ',var (coerce ',(spec-coerce-target spec) val)))]
                                    [(procedure-result-variable? var context)
-                                    `(set! ,(procedure-result-variable-name var context) val)]
+                                    `(set! ,(procedure-result-variable-name var context) 
+                                           (coerce ',(spec-coerce-target (procedure-result-spec var context)) val))]
                                    [(or (settable-variable? var context)
                                         (array-element? var context))
-                                    (if (own-variable? var context)
-                                        `(set-box! ,var val)
-                                        `(set! ,var val))]
+                                    => (lambda (spec)
+                                         `(,(if (own-variable? var context) 'set-box! 'set!)
+                                           ,var
+                                           (coerce ',(spec-coerce-target spec) val)))]
                                    [else (raise-syntax-error #f "confused by assignment" (expression-location var))])]
                                 [else
-                                 `(array-set! ,(compile-expression (make-a60:variable var null) context 'numbool)
-                                              val ,@(map (lambda (e) (compile-expression e context 'num)) 
-                                                         (a60:variable-indices avar)))]))))
+                                 (let ([spec (array-element? var context)])
+                                   `(array-set! ,(compile-expression (make-a60:variable var null) context 'numbool)
+                                                (coerce ',(spec-coerce-target spec) val)
+                                                ,@(map (lambda (e) (compile-expression e context 'num)) 
+                                                       (a60:variable-indices avar))))]))))
                       vars))
              (,next-label))]
          [else (error "can't compile statement")]))
@@ -343,7 +348,7 @@
              context))
      
      (define (add-settable-procedure context var result-type result-var)
-       (cons (list (cons var `(settable-procedure ,result-var)))
+       (cons (list (cons var `(settable-procedure ,result-var ,result-type)))
              context))
      
      (define (add-atoms context ids type)
@@ -352,7 +357,7 @@
 
      (define (add-arrays context names dimensionses type)
        (cons (map (lambda (name dimensions)
-                    (cons name `(array ,(length dimensions))))
+                    (cons name `(array ,type ,(length dimensions))))
                   names dimensionses)
              context))
 
@@ -365,7 +370,14 @@
                     (cons var
                           (if (ormap (lambda (x) (bound-identifier=? var x)) by-value-vars)
                               #'integer ; guess!
-                              'by-name)))
+                              (list 'by-name 
+                                    (let ([spec (ormap (lambda (spec)
+                                                         (and (ormap (lambda (x) (bound-identifier=? var x))
+                                                                     (cdr spec))
+                                                              (car spec)))
+                                                       arg-specs)])
+                                      (or spec
+                                          #'integer)))))) ; guess!
                   arg-vars)
              context))
      
@@ -391,7 +403,9 @@
 
      (define (call-by-name-variable? var context)
        (let ([v (var-binding var context)])
-         (eq? v 'by-name)))
+         (and (pair? v)
+              (eq? (car v) 'by-name)
+              (cadr v))))
      
      (define (procedure-variable? var context)
        (let ([v (var-binding var context)])
@@ -401,9 +415,15 @@
        (let ([v (var-binding var context)])
          (and (pair? v)
               (eq? (car v) 'settable-procedure)
-              (cadr v))))
+              (cdr v))))
      
-     (define procedure-result-variable-name procedure-result-variable?)
+     (define (procedure-result-variable-name var context)
+       (let ([v (procedure-result-variable? var context)])
+         (car v)))
+
+     (define (procedure-result-spec var context)
+       (let ([v (procedure-result-variable? var context)])
+         (cadr v)))
 
      (define (label-variable? var context)
        (let ([v (var-binding var context)])
@@ -417,7 +437,8 @@
        (let ([v (var-binding var context)])
          (or (box? v)
              (and (syntax? v)
-                  (memq (syntax-e v) '(integer real Boolean))))))
+                  (memq (syntax-e v) '(integer real Boolean))
+                  v))))
      
      (define (own-variable? var context)
        (let ([v (var-binding var context)])
@@ -428,5 +449,11 @@
          (and (pair? v)
               (eq? (car v) 'array)
               (cadr v))))
+     
+     (define (spec-coerce-target spec)
+       (cond
+         [(and (syntax? spec) (memq (syntax-e spec) '(string label switch real integer |Boolean| #f))) spec]
+         [(eq? (syntax-e (car spec) 'array)) (cadr spec)]
+         [(eq? (syntax-e (car spec)) 'procedure) 'procedure]))
      
      (define (stx-number? a) (and (syntax? a) (number? (syntax-e a)))))
