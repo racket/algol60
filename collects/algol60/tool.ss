@@ -16,7 +16,19 @@
       (import drscheme:tool^)
       
       (define (phase1) (void))
-      (define (phase2) (void))
+      (define (phase2) 
+        (drscheme:language-configuration:add-language
+         (make-object (override-render-value-set
+                       ((drscheme:language:get-default-mixin) 
+                        lang%)))))
+      
+      (define (override-render-value-set %)
+        (class %
+          (inherit [super-render-value-set render-value-set])
+          (define/override (render-value-set . x)
+            ;; needs to be filled in!
+            (super-render-value-set . x))
+          (super-instantiate ())))
 
       (define lang%
         (class* object% (drscheme:language:language<%>)
@@ -81,7 +93,4 @@
 					 (list "-mvqe" "(require m)"))))
 	  (define/public (get-one-line-summary) "Algol 60 (not Scheme at all!)")
           
-          (super-instantiate ())))
-      
-      (drscheme:language-configuration:add-language
-       (make-object lang%)))))
+          (super-instantiate ()))))))
