@@ -391,12 +391,12 @@
       (proc-decl (result-type var arg-vars by-value-vars arg-specs body)))
      
      (define (parse-a60-port port file)
-       (let ([buf (make-lex-buf port)]
-             [lexer (lex file)])
+       (let ([lexer (lex file)])
+	 (port-count-lines! port)
          (parse
           (lambda () 
             (let loop ()
-              (let ([v (lexer buf)])
+              (let ([v (lexer port)])
                 (if (void? v)
                     (loop)
                     v)))))))
