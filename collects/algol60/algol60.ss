@@ -5,6 +5,8 @@
               (lib "match.ss")
               (lib "list.ss"))
      
+     (provide compile-simplified)
+     
      (define (compile-simplified stmt)
        (datum->syntax-object 
         #'here

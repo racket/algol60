@@ -79,23 +79,23 @@
         [begin (ttoken BEGIN)]
         [(@ end (lex:comment)) (ttoken BEGIN)]
         [end (ttoken END)]
-        [^ (token POWER 'expt)]
-        [+ (token PLUS '+)]
-        [- (token MINUS '-)]
-        [* (token TIMES '*)]
-        [/ (token SLASH '/)]
-        [div (token DIVIDE 'quotient)]
-        [< (token LESS '<)]
-        [<= (token LESS-OR-EQUAL '<=)]
-        [= (token EQUAL '=)]
-        [> (token GREATER '>)]
-        [>= (token GREATER-OR-EQUAL '>=)]
-        [!= (token NOT-EQUAL '!=)]
-        [! (token NEGATE '!)]
-        [& (token AND '&)]
-        [#\| (token OR '\|)]
-        [=> (token IMPLIES '=>)]
-        [== (token EQUIV '==)]
+        [^ (token POWER #'expt)]
+        [+ (token PLUS #'+)]
+        [- (token MINUS #'-)]
+        [* (token TIMES #'*)]
+        [/ (token SLASH #'/)]
+        [div (token DIVIDE #'quotient)]
+        [< (token LESS #'<)]
+        [<= (token LESS-OR-EQUAL #'<=)]
+        [= (token EQUAL #'=)]
+        [> (token GREATER #'>)]
+        [>= (token GREATER-OR-EQUAL #'>=)]
+        [!= (token NOT-EQUAL #'!=)]
+        [! (token NEGATE #'!)]
+        [& (token AND #'&)]
+        [#\| (token OR #'\|)]
+        [=> (token IMPLIES #'=>)]
+        [== (token EQUIV #'==)]
         [:= (ttoken ASSIGN)]
         [#\, (ttoken COMMA)]
         [: (ttoken COLON)]
@@ -365,16 +365,21 @@
       (switch-decl (var cases))
       (proc-decl (result-type var arg-vars by-value-vars arg-specs body)))
      
-     (define (parse-a60 file)
+     (define (parse-a60-port port file)
+       (let ([buf (make-lex-buf port)]
+             [lexer (lexer file)])
+         (parse (lambda () 
+                  (let loop ()
+                    (let ([v (lexer buf)])
+                      (if (void? v)
+                          (loop)
+                          v)))))))
+     
+     (define (parse-a60-file file)
        (with-input-from-file file
          (lambda ()
-           (let ([buf (make-lex-buf (current-input-port))]
-                 [lexer (lexer (path->complete-path file))])
-           (parse (lambda () 
-                    (let loop ()
-                      (let ([v (lexer buf)])
-                        (if (void? v)
-                            (loop)
-                            v)))))))))
-      (provide parse-a60))
+           (parse-a60-port (current-input-port)
+                           (path->complete-path file)))))
+
+      (provide parse-a60-file parse-a60-port))
    
