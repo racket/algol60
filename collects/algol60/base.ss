@@ -1,14 +1,7 @@
-(module base "cmzscheme.ss"
-  (require "compile.ss"
-           "prims.ss"
-           "moreprims.ss")
+(module base mzscheme
+  (require "prims.ss"
+	   "runtime.ss")
 
-  (provide (all-from "prims.ss")
-           (all-from "moreprims.ss")
-           
-           ;; Operators:
-           + - * / < > <= >= = expt quotient
-           
-           #%top
-           #%app
-           #%datum))
+  (provide (all-from mzscheme)
+	   (all-from "prims.ss")
+           (all-from "runtime.ss")))

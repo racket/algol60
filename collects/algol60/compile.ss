@@ -1,23 +1,27 @@
-#cs(module compile "cmzscheme.ss"
+#cs(module compile mzscheme
      (require "parse.ss"
-              "simplify.ss"
-              "prims.ss"
-              "runtime.ss"
-              "moreprims.ss"
               (lib "match.ss")
               (lib "list.ss"))
      
      (provide compile-simplified)
-     
-     (define (compile-simplified stmt)
+
+     ;; The compiler generates references to prim.ss and
+     ;; runtime.ss exports, as well as MzScheme forms
+     ;; and functions. The `ctx' argument provides
+     ;; an appropriate context for those bindings (in
+     ;; the form of a syntax object to use with d->s-o).
+     (define (compile-simplified stmt ctx)
        (let ([no-num (gensym 'no-num)])
          (datum->syntax-object 
-          #'here
+          ctx
           `(let ([,no-num
                   (lambda (n)
                     (error "no number label matching " n))])
-             ,(compile-a60 stmt 'void no-num (empty-context))))))
+             ,(parameterize ([current-compile-context ctx])
+		(compile-a60 stmt 'void no-num (empty-context)))))))
 
+     (define current-compile-context (make-parameter #f))
+     
      (define (compile-a60 stmt next-label num-label context)
        (match stmt
          [($ a60:block decls statements)
@@ -31,7 +35,7 @@
                                      (map 
                                       (lambda (l)
                                         (and (stx-number? l)
-                                             (cons l (datum->syntax-object #F (gensym 'numlabel)))))
+                                             (cons l (datum->syntax-object #f (gensym 'numlabel)))))
                                       labels-with-numbers))]
               [num-label (if (null? num-label-map)
                              next-num-label
@@ -151,7 +155,7 @@
                           (cond
                             [(null? (a60:variable-indices avar))
                              (cond
-                               [(call-by-name-variable? var context)
+			       [(call-by-name-variable? var context)
                                 `(set-target! ,var val)]
                                [(procedure-result-variable? var context)
                                 `(set! ,(procedure-result-variable-name var context) val)]
@@ -171,11 +175,11 @@
      
      (define (compile-expression expr context)
        (match expr
-         [(? (lambda (x) (and (syntax? x) (number? (syntax-e x)))) n) n]
-         [(? (lambda (x) (and (syntax? x) (boolean? (syntax-e x)))) n) n]
-         [(? (lambda (x) (and (syntax? x) (string? (syntax-e x)))) n) n]
+         [(? (lambda (x) (and (syntax? x) (number? (syntax-e x)))) n) (as-builtin n)]
+         [(? (lambda (x) (and (syntax? x) (boolean? (syntax-e x)))) n) (as-builtin n)]
+         [(? (lambda (x) (and (syntax? x) (string? (syntax-e x)))) n) (as-builtin n)]
          [(? identifier? i) (compile-expression (make-a60:variable i null) context)]
-         [(? symbol? i) (datum->syntax-object #f i)]
+         [(? symbol? i) (datum->syntax-object #f i)] ; must be a generated label
          [($ a60:subscript array index)
           ;; Maybe a switch index, or maybe an array reference
 	  (at array
@@ -184,10 +188,10 @@
 		  `(switch-ref ,array ,(compile-expression index context))))]
          [($ a60:binary op e1 e2)
           (at op
-              `(,op ,(compile-expression e1 context) ,(compile-expression e2 context)))]
+              `(,(as-builtin op) ,(compile-expression e1 context) ,(compile-expression e2 context)))]
          [($ a60:unary op e1)
           (at op
-              `(,op ,(compile-expression e1 context)))]
+              `(,(as-builtin op) ,(compile-expression e1 context)))]
          [($ a60:variable var subscripts)
           (let ([sub (lambda (v)
                        (if (null? subscripts)
@@ -196,6 +200,13 @@
             (cond
               [(call-by-name-variable? var context)
                (sub `(get-value ,var))]
+	      [(primitive-variable? var context)
+	       => (lambda (name)
+		    (sub (datum->syntax-object
+			  (current-compile-context)
+			  name
+			  var
+			  var)))]
               [(or (procedure-result-variable? var context)
                    (procedure-variable? var context)
                    (label-variable? var context)
@@ -237,7 +248,10 @@
      (define (compile-argument arg context)
        (cond
          [(and (a60:variable? arg) 
-               (not (procedure-variable? (a60:variable-name arg) context)))
+               (not (let ([v  (a60:variable-name arg)])
+		      (or (procedure-variable? v context)
+			  (label-variable? v context)
+			  (primitive-variable? v context)))))
           `(case-lambda
              [() ,(compile-expression arg context)]
              [(val)  ,(compile-statement (make-a60:assign (list arg) 'val) 'void 'void context)])]
@@ -247,12 +261,36 @@
      
      (define (at stx expr)
        (if (syntax? stx)
-           (datum->syntax-object #'here expr stx)
+           (datum->syntax-object (current-compile-context) expr stx)
            expr))
+
+     (define (as-builtin stx)
+       ;; Preserve source loc, but change to reference to
+       ;; a builtin operation by changing the context:
+       (datum->syntax-object
+	(current-compile-context)
+	(syntax-e stx)
+	stx
+	stx))
      
      ;; --------------------
      
-     (define (empty-context) null)
+     (define (empty-context)
+       `(((sign prim sign)
+	  (entier prim entier)
+
+	  (sin prim a60:sin)
+	  (cos prim a60:cos)
+	  (acrtan prim a60:arctan)
+	  (sqrt prim a60:sqrt)
+	  (abs prim a60:abs)
+	  (ln prim a60:ln)
+	  (exp prim a60:exp)
+
+	  (prints prim prints)
+	  (printn prim printn)
+	  (printsln prim printsln)
+	  (printnln prim printnln))))
      
      (define (add-labels context l)
        (cons (map (lambda (lbl) (cons (if (symbol? lbl)
@@ -294,13 +332,24 @@
      
      (define (var-binding var context)
        (if (null? context)
-           'procedure
+           'free
            (let ([m (ormap (lambda (b)
-                             (and (module-identifier=? var (car b))
-                                  (cdr b)))
+			     (if (symbol? (car b))
+				 ;; primitives:
+				 (and (eq? (syntax-e var) (car b))
+				      (cdr b))
+				 ;; everything else:
+				 (and (bound-identifier=? var (car b))
+				      (cdr b))))
                            (car context))])
              (or m (var-binding var (cdr context))))))
      
+     (define (primitive-variable? var context)
+       (let ([v (var-binding var context)])
+	 (and (pair? v)
+	      (eq? (car v) 'prim)
+	      (cadr v))))
+
      (define (call-by-name-variable? var context)
        (let ([v (var-binding var context)])
          (eq? v 'by-name)))
@@ -337,5 +386,4 @@
               (eq? (car v) 'array)
               (cadr v))))
      
-     (define (stx-number? a) (and (syntax? a) (number? (syntax-e a))))
-     )
+     (define (stx-number? a) (and (syntax? a) (number? (syntax-e a)))))

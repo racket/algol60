@@ -41,15 +41,15 @@
               (syntax (let ([start (get-start-pos)]
                             [end (get-end-pos)])
                         (token-name 
-                         (datum->syntax-object #f val
-                                               (list
-                                                source-name
-                                                (position-line start)
-                                                (position-col start)
-                                                (position-offset start)
-                                                (- (position-offset end)
-                                                   (position-offset start)))
-                                               stx-for-original-property))))))]))
+			 (datum->syntax-object #f val
+					       (list
+						source-name
+						(position-line start)
+						(position-col start)
+						(position-offset start)
+						(- (position-offset end)
+						   (position-offset start)))
+					       stx-for-original-property))))))]))
      (define-syntax (ttoken stx)
        (syntax-case stx ()
          [(_ name)

@@ -6,6 +6,7 @@
            "parse.ss"
            "simplify.ss"
            "compile.ss"
+	   "get-base.ss"
 	   (lib "embed.ss" "compiler"))
 
   (provide tool@)
@@ -37,7 +38,9 @@
               (lambda ()
                 (if (eof-object? (peek-char port))
                     eof
-                    (compile-simplified (simplify (parse-a60-port port name)))))))
+		    (compile-simplified 
+		     (simplify (parse-a60-port port name) base-importing-stx) 
+		     base-importing-stx)))))
           (define/public (get-style-delta) #f)
           (define/public (get-language-position) (list "Algol 60"))
           (define/public (get-language-numbers) (list 10))
@@ -45,7 +48,6 @@
           (define/public (marshall-settings x) x)
           (define/public (on-execute settings run-in-user-thread)
             (dynamic-require '(lib "base.ss" "algol60") #f)
-            (dynamic-require '(lib "base.ss" "algol60") (void))
             (let ([path ((current-module-name-resolver) '(lib "base.ss" "algol60") #f #f)]
                   [n (current-namespace)])
               (run-in-user-thread
@@ -63,16 +65,17 @@
           (define/public (render-value/format value settings port port-write) (write value port))
           (define/public (unmarshall-settings x) x)
 	  (define/public (create-executable settings parent src-file dest-file)
-	    (let ([code (compile-simplified (simplify (parse-a60-file src-file)))])
+	    (let ([code (compile-simplified (simplify (parse-a60-file src-file)
+						      base-importing-stx)
+					    base-importing-stx)])
 	      (make-embedding-executable dest-file
 					 #f #f
 					 '((#f (lib "base.ss" "algol60")))
 					 null
 					 (compile
-					  `(begin
-					     (require (lib "base.ss" "algol60"))
+					  `(module m (lib "base.ss" "algol60")
 					     ,code))
-					 null)))
+					 (list "-mvqe" "(require m)"))))
 	  (define/public (get-one-line-summary) "Algol 60 (not Scheme at all!)")
           
           (super-instantiate ())))

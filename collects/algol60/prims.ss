@@ -2,6 +2,15 @@
   (provide != ! & \|
            => ==
            sign entier
+
+	   a60:sin
+           a60:cos
+           a60:arctan
+           a60:sqrt
+           a60:abs
+           a60:ln
+           a60:exp
+
            prints printn
            printsln printnln)
   
@@ -50,6 +59,27 @@
   
   (define (entier k v)
     (k (inexact->exact (floor (v)))))
+
+  (define (a60:abs k v)
+    (k (abs (v))))
+  
+  (define (a60:sqrt k v)
+    (k (sqrt (v))))
+  
+  (define (a60:sin k v)
+    (k (sin (v))))
+  
+  (define (a60:cos k v)
+    (k (cos (v))))
+  
+  (define (a60:exp k v)
+    (k (exp (v))))
+  
+  (define (a60:arctan k v)
+    (k (atan (v))))
+  
+  (define (a60:ln k v)
+    (k (log (v))))
   
   (define (printsln k v)
     (k (printf "~a~n" (v))))
