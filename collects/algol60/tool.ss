@@ -23,17 +23,19 @@
                         lang%)))))
       
       (define (override-mrflow-methods %)
-        (class %
-          (inherit [super-render-value-set render-value-set]
-                   [super-get-mrflow-primitives-filename get-mrflow-primitives-filename])
-          (define/override (render-value-set . x)
-            ;; needs to be filled in!
-            (super-render-value-set . x))
-          (define/override (get-mrflow-primitives-filename)
-            (build-path (collection-path "mrflow")
-                        "primitives"
-                        "algol60.ss"))
-          (super-instantiate ())))
+	(if (method-in-interface? 'render-value-set (class->interface %))
+	    (class %
+	      (inherit [super-render-value-set render-value-set]
+		       [super-get-mrflow-primitives-filename get-mrflow-primitives-filename])
+	      (define/override (render-value-set . x)
+		;; needs to be filled in!
+		(super-render-value-set . x))
+	      (define/override (get-mrflow-primitives-filename)
+		(build-path (collection-path "mrflow")
+			    "primitives"
+			    "algol60.ss"))
+	      (super-instantiate ()))
+	    %))
 
       (define lang%
         (class* object% (drscheme:language:language<%>)
