@@ -26,7 +26,7 @@ end;
 
 procedure inv(v) ; inv := 1.0/((v+1)^2);
 
-integer result;
+real result;
 euler(inv, result, 0.00005, 10);
 printnln(result);
 

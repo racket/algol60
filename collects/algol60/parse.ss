@@ -307,7 +307,7 @@
                           [(<identifier> COMMA <array-segment>) (cons (cons $1 (cdar $3)) $3)])
          (<array-list> [(<array-segment>) $1]
                        [(<array-list> COMMA <array-segment>) (append $1 $3)])
-         (<array-declaration> [(ARRAY <array-list>) (make-a60:array-decl #f $2)]
+         (<array-declaration> [(ARRAY <array-list>) (make-a60:array-decl #'unknown $2)]
                               [(<local-or-own-type> ARRAY <array-list>) (make-a60:array-decl $1 $3)])
          ;; -------------------- Switches --------------------
          (<switch-list> [(<designational-expression>) (list $1)]
@@ -326,11 +326,11 @@
                        [() null])
          (<specifier> [(STRING) 'string]
                       [(<type>) $1]
-                      [(ARRAY) '(array #f)]
+                      [(ARRAY) '(array #'unknown)]
                       [(<type> ARRAY) `(array ,$1)]
                       [(LABEL) 'label]
                       [(SWITCH) 'switch]
-                      [(PROCEDURE) '(procedure #f)]
+                      [(PROCEDURE) '(procedure #'unknown)]
                       [(<type> PROCEDURE) `(procedure ,$1)])
          (<nonempty-specification-part> [(<specifier> <identifier-list> SEMICOLON) (list (cons $1 $2))]
                                         [(<nonempty-specification-part> <specifier> <identifier-list> SEMICOLON)
@@ -341,7 +341,7 @@
                                (list $1 $2 $4 $5)])
          (<procedure-body> [(<nonempty-statement>) $1])
          (<procedure-declaration> [(PROCEDURE <procedure-heading> <procedure-body>)
-                                   (make-a60:proc-decl #f (car $2) (cadr $2) (caddr $2) (cadddr $2) $3)]
+                                   (make-a60:proc-decl #'unknown (car $2) (cadr $2) (caddr $2) (cadddr $2) $3)]
                                   [(<type> PROCEDURE <procedure-heading> <procedure-body>)
                                    (make-a60:proc-decl $1 (car $3) (cadr $3) (caddr $3) (cadddr $3) $4)])
          ;; ==================== Program ====================

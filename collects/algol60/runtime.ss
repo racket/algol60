@@ -26,10 +26,23 @@
       (error 'assignment "formal-argument variable ~a is assigned, but actual argument was not assignable"
              name))
     (t v))
+  
+  (define (bad what v)
+    (error '|bad value| "expected a ~a, got ~e" what v))
   (define (coerce type v)
     (cond
-      [(eq? type 'integer) (inexact->exact (floor v))]
-      [(eq? type 'real) (exact->inexact (floor v))]
+      [(eq? type 'integer) 
+       (if (number? v)
+           (inexact->exact (floor v))
+           (bad 'number v))]
+      [(eq? type 'real) 
+       (if (number? v)
+           (exact->inexact v)
+           (bad 'number v))]
+      [(eq? type 'boolean) 
+       (if (boolean? v)
+           v
+           (bad 'boolean v))]
       [else v]))
   
   (define (make-array . dimens)
@@ -49,16 +62,37 @@
                           (loop (sub1 len))))
                       v))))))))
      dimens))
+
+  (define (check-array a is who)
+    (unless (a60:array? a)
+      (error who "not an array: ~e" a))
+    (unless (= (length is) (/ (length (a60:array-dimens a)) 2))
+      (error who "array dimension ~a doesn't match the number of provided indices ~a"
+             (length is) (/ (length (a60:array-dimens a)) 2))))
+  
+  (define (check-index who dimens indices)
+    (unless (and (number? (car indices))
+                 (exact? (car indices))
+                 (integer? (car indices)))
+      (error who "index is not an integer: ~e"
+             (car indices)))
+    (unless (<= (car dimens) (car indices) (cadr dimens))
+      (error who "index ~a out of range ~a:~a"
+             (car indices) (car dimens) (cadr dimens))))
   
   (define (array-ref a . indices)
+    (check-array a indices 'array-reference)
     (let loop ([v (a60:array-vec a)][indices indices][dimens (a60:array-dimens a)])
+      (check-index 'array-reference dimens indices)
       (let ([i (vector-ref v (- (car indices) (car dimens)))])
         (if (null? (cdr indices))
             i
             (loop i (cdr indices) (cddr dimens))))))
   
   (define (array-set! a val . indices)
+    (check-array a indices 'array-assignment)
     (let loop ([v (a60:array-vec a)][indices indices][dimens (a60:array-dimens a)])
+      (check-index 'array-assignment dimens indices)
       (if (null? (cdr indices))
           (vector-set! v (- (car indices) (car dimens)) val)
           (loop (vector-ref v (- (car indices) (car dimens))) (cdr indices) (cddr dimens)))))
