@@ -88,7 +88,7 @@
           (define/public (render-value/format value settings port port-write width) (write value port))
           (define/public (unmarshall-settings x) x)
 	  (define/public (create-executable settings parent src-file)
-	    (let ([dst-file (drscheme:language:put-executable-file parent src-file)])
+	    (let ([dst-file (drscheme:language:put-executable parent src-file #f #f)])
 	      (when dst-file
 		(let ([code (compile-simplified (simplify (parse-a60-file src-file)
 							  base-importing-stx)
