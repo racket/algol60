@@ -8,7 +8,8 @@
            "compile.ss"
 	   "get-base.ss"
 	   (lib "embed.ss" "compiler")
-	   (lib "string-constant.ss" "string-constants"))
+	   (lib "string-constant.ss" "string-constants")
+	   (prefix bd: "bd-tool.ss"))
 
   (provide tool@)
 
@@ -16,8 +17,14 @@
     (unit/sig drscheme:tool-exports^
       (import drscheme:tool^)
       
-      (define (phase1) (void))
+      (define-values/invoke-unit/sig drscheme:tool-exports^
+	bd:tool@
+	bd
+	drscheme:tool^)
+
+      (define (phase1) (bd:phase1))
       (define (phase2) 
+	(bd:phase2)
         (drscheme:language-configuration:add-language
          (make-object (override-mrflow-methods
                        ((drscheme:language:get-default-mixin) 
