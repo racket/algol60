@@ -44,28 +44,19 @@
             (case-lambda
               [() null]
               [(x) (void)]))
+          (define/public (get-comment-character) (values "'COMMENT'" #\*))
           (define/public (default-settings) null)
           (define/public (default-settings? x) #t)
-          (define/private (front-end input settings)
-            (let-values ([(port name)
-                          (if (string? input)
-                              (values (open-input-file input) (path->complete-path input))
-                              (let ([text (drscheme:language:text/pos-text input)])
-                                (values
-                                 (open-input-string
-                                  (send text
-                                        get-text
-                                        (drscheme:language:text/pos-start input)
-                                        (drscheme:language:text/pos-end input)))
-                                 text)))])
+          (define/private (front-end port settings)
+            (let ([name (object-name port)])
               (lambda ()
                 (if (eof-object? (peek-char port))
                     eof
 		    (compile-simplified 
 		     (simplify (parse-a60-port port name) base-importing-stx) 
 		     base-importing-stx)))))
-          (define/public (front-end/complete-program input settings teachpack-cache) (front-end input settings))
-          (define/public (front-end/interaction input settings teachpack-cache) (front-end input settings))
+          (define/public (front-end/complete-program port settings teachpack-cache) (front-end port settings))
+          (define/public (front-end/interaction port settings teachpack-cache) (front-end port settings))
           (define/public (get-style-delta) #f)
           (define/public (get-language-position)
 	    (list (string-constant experimental-languages)
