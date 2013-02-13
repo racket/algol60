@@ -8,8 +8,10 @@
                      "scribble-lib"
                      "drracket-plugin-lib"))
 
-(define tools '(("tool.rkt")))
-(define tool-names '("Algol 60"))
+(define drracket-name "Algol 60")
+(define drracket-tools '(("tool.rkt")))
+(define drracket-tool-names '("Algol 60"))
+
 (define scribblings '(("algol60.scrbl" () (experimental 40))))
 (define deps '("base"
                "compatibility-lib"
