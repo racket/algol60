@@ -65,6 +65,9 @@
                       [(a60:proc-decl result-type var arg-vars by-value-vars arg-specs body)
                        (let ([code
                               `(lambda (kont . ,arg-vars)
+                                 ;; Include the declaration variables
+                                 ,@(for/list ([arg-spec (in-list arg-specs)])
+                                     `(void ,@(cdr arg-spec)))
                                  ;; Extract by-value variables
                                  (let ,(map (lambda (var)
                                               `[,var (get-value ,var)])
