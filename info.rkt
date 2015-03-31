@@ -6,6 +6,7 @@
                      "racket-doc"
                      "scribble-doc"
                      "scribble-lib"
+                     "drracket-tool-lib"
                      "drracket-plugin-lib"))
 
 (define drracket-name "Algol 60")
