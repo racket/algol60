@@ -6,21 +6,22 @@
 (define-syntax (capture-output stx)
   (syntax-case stx ()
     [(_ exp)
-     (with-handlers ((exn:fail?
-                      (λ (exn)
-                        #`(list 'expand
-                                #,(exn-message exn)))))
-       (define expanded (local-expand #'exp 'expression #f))
-       #`(let ([op (open-output-string)]
-               [ep (open-output-string)])
-           (let/ec k
-             (parameterize ([current-output-port op]
-                            [current-error-port ep]
-                            [error-escape-handler (λ () (k (void)))])
-               #,expanded))
-           (list 'run
-                 (get-output-string op)
-                 (get-output-string ep))))]))
+     (parameterize ([error-print-source-location #f])
+       (with-handlers ((exn:fail?
+                        (λ (exn)
+                          #`(list 'expand
+                                  #,(exn-message exn)))))
+         (define expanded (local-expand #'exp 'expression #f))
+         #`(let ([op (open-output-string)]
+                 [ep (open-output-string)])
+             (let/ec k
+               (parameterize ([current-output-port op]
+                              [current-error-port ep]
+                              [error-escape-handler (λ () (k (void)))])
+                 #,expanded))
+             (list 'run
+                   (get-output-string op)
+                   (get-output-string ep)))))]))
 
 (check-equal?
  (capture-output
