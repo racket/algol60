@@ -1,6 +1,7 @@
 #lang at-exp racket/base
 (require algol60/algol60
          rackunit
+         racket/runtime-path
          (for-syntax racket/base))
 
 (define-syntax (capture-output stx)
@@ -60,3 +61,6 @@
                end
     end Absmax
   }))
+
+(define-runtime-path export.rkt "export.rkt")
+(check-equal? ((dynamic-require export.rkt 'f) 2) 1/2)

@@ -30,7 +30,7 @@ algol60/lang/algol60
 (define (algol60-read-syntax src in)
   (define parsed (parse-a60-port in src))
   (define simplified (simplify parsed #'here))
-  (define compiled (compile-simplified simplified #'here))
+  (define compiled (compile-simplified simplified #'here #:module-exports? #t))
   (define stripped (strip-context compiled))
 
   (list stripped))

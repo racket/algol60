@@ -9,15 +9,15 @@
 ;; and functions. The `ctx' argument provides
 ;; an appropriate context for those bindings (in
 ;; the form of a syntax object to use with d->s-o).
-(define (compile-simplified stmt ctx)
+(define (compile-simplified stmt ctx #:module-exports? [module-exports? #f])
   (datum->syntax 
    ctx
    (parameterize ([current-compile-context ctx])
-     (compile-a60 stmt 'void (empty-context) #t))))
+     (compile-a60 stmt 'void (empty-context) #t module-exports?))))
 
 (define current-compile-context (make-parameter #f))
 
-(define (compile-a60 stmt next-label context add-to-top-level?)
+(define (compile-a60 stmt next-label context add-to-top-level? module-exports?)
   (match stmt
     [(a60:block decls statements)
      (compile-block decls statements next-label context add-to-top-level?)]
@@ -88,31 +88,41 @@
                                                         var
                                                         result-type
                                                         result-var)
+                                                       #f
                                                        #f)))))])
                          (if add-to-top-level?
-                             `([,var
-                                (let ([tmp ,code])
-                                  (namespace-set-variable-value! ',var tmp)
-                                  tmp)])
-                             `([,var
-                                ,code])))]
+                             (let ([exported (gensym 'exported)])
+                               (list
+                                `(define ,var ,code)
+                                `(define ,exported
+                                   (let ([var (λ args
+                                                (apply ,var (λ (x) x)
+                                                       (map (λ (x) (λ () x)) args)))])
+                                     var))
+                                `(provide (rename-out [,exported ,var]))
+                                `(namespace-set-variable-value! ',var ,var)))
+                             (list
+                              `(define ,var
+                                 ,code))))]
                       [(a60:type-decl type ids)
-                       (map (lambda (id) `[,id undefined]) ids)]
+                       (map (lambda (id) `(define ,id undefined)) ids)]
                       [(a60:array-decl type arrays)
                        (map (lambda (array) 
-                              `[,(car array) (make-array
-                                              ,@(apply
-                                                 append
-                                                 (map
-                                                  (lambda (bp)
-                                                    (list
-                                                     (compile-expression (car bp) context 'num)
-                                                     (compile-expression (cdr bp) context 'num)))
-                                                  (cdr array))))])
+                              `(define ,(car array)
+                                 (make-array
+                                  ,@(apply
+                                     append
+                                     (map
+                                      (lambda (bp)
+                                        (list
+                                         (compile-expression (car bp) context 'num)
+                                         (compile-expression (cdr bp) context 'num)))
+                                      (cdr array))))))
                             arrays)]
                       [(a60:switch-decl name exprs)
-                       `([,name (make-switch ,@(map (lambda (e) `(lambda () ,(compile-expression e context 'des)))
-                                                    exprs))])]
+                       (list
+                        `(define ,name (make-switch ,@(map (lambda (e) `(lambda () ,(compile-expression e context 'des)))
+                                                           exprs))))]
                       [else (error "can't compile decl")]))
                   decls))
             ;; Statements: most of the work is in `compile-statement', but
@@ -121,25 +131,36 @@
              (foldr (lambda (stmt label next-label+compiled)
                       (cons label
                             (cons
-                             `[,label
+                             `(define ,label
                                (lambda ()
                                  ,(compile-statement (cdr stmt) 
                                                      (car next-label+compiled)
-                                                     context))]
+                                                     context)))
                              (cdr next-label+compiled))))
                     (cons next-label null)
                     statements
                     labels)))])
       ;; Check for duplicate bindings:
-      (let ([dup (check-duplicate-identifier (filter identifier? (map car bindings)))])
+      (let ([dup
+             (check-duplicate-identifier
+              (for/list ([binding (in-list bindings)]
+                         #:when (match binding
+                                  [`(define ,(? identifier? id) ,exp) #t]
+                                  [_ #f]))
+                (list-ref binding 1)))])
         (when dup
           (raise-syntax-error
            #f
            "name defined twice"
            dup)))
       ;; Generate code; body of leterec jumps to the first statement label.
-      `(letrec ,bindings 
-         (,(caar statements))))))
+      (if add-to-top-level?
+          `(begin
+             ,@bindings
+             (,(caar statements)))
+          `(let ()
+             ,@bindings
+             (,(caar statements)))))))
 
 (define (compile-statement statement next-label context)
   (match statement
