@@ -95,10 +95,10 @@
                                (list
                                 `(define ,var ,code)
                                 `(define ,exported
-                                   (let ([var (λ args
+                                   (let ([,var (λ args
                                                 (apply ,var (λ (x) x)
                                                        (map (λ (x) (λ () x)) args)))])
-                                     var))
+                                     ,var))
                                 `(provide (rename-out [,exported ,var]))
                                 `(namespace-set-variable-value! ',var ,var)))
                              (list
