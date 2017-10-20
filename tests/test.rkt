@@ -64,3 +64,4 @@
 
 (define-runtime-path export.rkt "export.rkt")
 (check-equal? ((dynamic-require export.rkt 'f) 2) 1/2)
+(check-equal? (object-name (dynamic-require export.rkt 'f)) 'f)
