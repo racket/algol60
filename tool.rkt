@@ -8,8 +8,7 @@
          "compile.rkt"
          compiler/embed
          string-constants
-         errortrace/errortrace-lib
-         (prefix-in bd: "bd-tool.rkt"))
+         errortrace/errortrace-lib)
 
 (provide tool@)
 
@@ -20,13 +19,8 @@
     (import drracket:tool^)
     (export drracket:tool-exports^)
     
-    (define-values/invoke-unit bd:tool@
-      (import drracket:tool^)
-      (export (prefix bd: drracket:tool-exports^)))
-    
-    (define (phase1) (bd:phase1))
-    (define (phase2) 
-      (bd:phase2)
+    (define (phase1) (void))
+    (define (phase2)
       (drracket:language-configuration:add-language
        (make-object (override-mrflow-methods
                      ((drracket:language:get-default-mixin) 
