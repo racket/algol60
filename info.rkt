@@ -25,3 +25,6 @@
 (define pkg-desc "An implementation of the Algol60 language")
 
 (define pkg-authors '(mflatt robby))
+
+(define license
+  '(Apache-2.0 OR MIT))
