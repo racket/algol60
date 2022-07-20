@@ -85,7 +85,7 @@
    ["value" (ttoken VALUE)]
    [(:: "begin" lex:comment) (ttoken BEGIN)]
    ["begin" (ttoken BEGIN)]
-   [(:: "end" lex:comment) (ttoken BEGIN)]
+   [(:: "end" lex:comment) (ttoken END)]
    ["end" (ttoken END)]
    ["^" (token POWER 'expt)]
    ["+" (token PLUS '+)]
