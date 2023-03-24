@@ -77,7 +77,7 @@ ASCII, and they are mapped as follows:
    negation          !")
 
 In addition to the standard functions, the following output functions
-are supported, as :
+are supported:
 
 @(verbatim
 "   prints(E)    prints the string E
@@ -85,7 +85,7 @@ are supported, as :
    printn(E)    prints the number E
    printnln(E)  prints the number E followed by a newline")
    
-No oututput procedures were defined by the ``Revised Report on the Algorithmic 
+No output procedures were defined by the ``Revised Report on the Algorithmic 
 Language Algol 60,'' as these were locally implemented by the many Algol 60 
 implementations.
 
